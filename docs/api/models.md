@@ -11,3 +11,16 @@ Where a scheduled task definition comes from.
 
 - `CODE` — Managed by the codebase and synced automatically on scheduler startup.
 - `DATABASE` — Managed by operators through the Django admin.
+
+## TaskExecution
+
+::: django_periodic_tasks.models.TaskExecution
+    :docstring:
+
+## TaskExecution.Status
+
+The lifecycle status of an execution permit.
+
+- `PENDING` — Created by the scheduler, awaiting worker pickup.
+- `COMPLETED` — The `@exactly_once` decorator ran the task successfully.
+- `SKIPPED` — The execution was skipped (e.g. the row was no longer `PENDING` when the worker acquired the lock).

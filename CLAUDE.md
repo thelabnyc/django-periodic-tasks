@@ -12,7 +12,7 @@ Periodic/cron task scheduling for django-tasks. Backend-agnostic replacement for
   - `scheduler.py` - PeriodicTaskScheduler (daemon thread)
   - `task_resolver.py` - Resolve task_path -> Task object
   - `admin.py` - Django admin (read-only for code-defined tasks)
-  - `management/commands/` - run_scheduler, scheduler_db_worker
+  - `management/commands/` - run_scheduler
 - `sandbox/` - Development/test Django project
 - `tests/` - Test suite
 

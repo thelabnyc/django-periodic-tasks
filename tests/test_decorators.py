@@ -13,8 +13,8 @@ class TestExactlyOnceDecorator(TestCase):
             cron_expression="* * * * *",
         )
 
-    def test_runs_normally_without_execution_id(self) -> None:
-        """Without _execution_id, the decorator passes through to the inner function."""
+    def test_runs_normally_without_periodic_tasks_execution_id(self) -> None:
+        """Without _periodic_tasks_execution_id, the decorator passes through to the inner function."""
         call_log: list[str] = []
 
         @exactly_once
@@ -38,7 +38,7 @@ class TestExactlyOnceDecorator(TestCase):
             call_log.append("called")
             return "done"
 
-        result = my_func(_execution_id=str(execution.id))
+        result = my_func(_periodic_tasks_execution_id=str(execution.id))
         self.assertEqual(result, "done")
         self.assertEqual(call_log, ["called"])
 
@@ -60,7 +60,7 @@ class TestExactlyOnceDecorator(TestCase):
             call_log.append("called")
             return "done"
 
-        result = my_func(_execution_id=str(execution.id))
+        result = my_func(_periodic_tasks_execution_id=str(execution.id))
         self.assertIsNone(result)
         self.assertEqual(call_log, [])
 
@@ -75,7 +75,7 @@ class TestExactlyOnceDecorator(TestCase):
             call_log.append("called")
             return "done"
 
-        result = my_func(_execution_id=str(uuid.uuid4()))
+        result = my_func(_periodic_tasks_execution_id=str(uuid.uuid4()))
         self.assertIsNone(result)
         self.assertEqual(call_log, [])
 
@@ -100,7 +100,7 @@ class TestExactlyOnceDecorator(TestCase):
         self.assertEqual(my_func.__doc__, "My docstring.")
 
     def test_passes_through_args_and_kwargs(self) -> None:
-        """The decorator should forward all args/kwargs (except _execution_id) to the inner function."""
+        """The decorator should forward all args/kwargs (except _periodic_tasks_execution_id) to the inner function."""
         execution = TaskExecution.objects.create(
             scheduled_task=self.scheduled_task,
         )
@@ -109,5 +109,5 @@ class TestExactlyOnceDecorator(TestCase):
         def my_func(a: int, b: int, c: str = "default") -> str:
             return f"{a}+{b}={c}"
 
-        result = my_func(1, 2, c="three", _execution_id=str(execution.id))
+        result = my_func(1, 2, c="three", _periodic_tasks_execution_id=str(execution.id))
         self.assertEqual(result, "1+2=three")

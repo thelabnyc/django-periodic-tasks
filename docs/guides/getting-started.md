@@ -55,17 +55,16 @@ The `@scheduled_task` decorator must be applied **above** `@task()`. The `cron` 
 
 ## Run the Scheduler
 
-If you're using the django-tasks **database backend** (recommended), use the combined command that runs both the task worker and the scheduler together:
+Enable the scheduler by adding this to your settings:
 
-```sh
-python manage.py scheduler_db_worker
+```python
+# settings.py
+PERIODIC_TASKS_AUTOSTART = True
 ```
 
-If you're using a different backend (e.g. RQ), run the scheduler as a standalone process:
+The scheduler starts automatically as a daemon thread when Django starts. It checks for due tasks every 15 seconds (configurable via `PERIODIC_TASKS_SCHEDULER_INTERVAL`).
 
-```sh
-python manage.py run_scheduler
-```
+Run your task worker as usual (e.g. `python manage.py db_worker` for the database backend). The scheduler thread enqueues tasks; the worker executes them.
 
 ## Verify It Works
 

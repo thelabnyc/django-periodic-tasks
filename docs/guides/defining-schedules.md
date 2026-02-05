@@ -87,6 +87,55 @@ django-periodic-tasks uses standard 5-field cron expressions:
 | `0 0 1 * *` | First of every month at midnight |
 | `30 2 * * 0` | Sundays at 2:30 AM |
 
+### Using fluentcron
+
+If you prefer a type-safe, self-documenting API over raw cron strings, use the [fluentcron](https://gitlab.com/thelabnyc/fluentcron/) library:
+
+```sh
+pip install fluentcron
+```
+
+fluentcron provides a fluent builder and shortcut functions that produce standard cron expression strings:
+
+```python
+from django_tasks import task
+from django_periodic_tasks import scheduled_task
+from fluentcron import CronSchedule, daily_at, every_n_minutes
+
+# Shortcut function — returns a cron string directly
+@scheduled_task(cron=every_n_minutes(15))  # "*/15 * * * *"
+@task()
+def health_check() -> None:
+    ...
+
+
+# Shortcut function
+@scheduled_task(cron=daily_at(8))  # "0 8 * * *"
+@task()
+def morning_report() -> None:
+    ...
+
+
+# Fluent builder — call str() or .to_str() for the cron string
+@scheduled_task(
+    cron=str(CronSchedule().weekly().on_monday().at(9, 30)),  # "30 9 * * 1"
+)
+@task()
+def weekly_digest() -> None:
+    ...
+```
+
+fluentcron also ships with `CommonSchedules` presets for frequently used expressions:
+
+```python
+from fluentcron import CommonSchedules
+
+@scheduled_task(cron=CommonSchedules.EVERY_HOUR)  # "0 * * * *"
+@task()
+def sync_data() -> None:
+    ...
+```
+
 ### Timezone Support
 
 By default, cron expressions are evaluated in UTC. Specify a timezone to match against local time:

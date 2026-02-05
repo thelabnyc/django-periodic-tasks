@@ -1,5 +1,6 @@
 import logging
 import threading
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -64,6 +65,16 @@ class PeriodicTaskScheduler(threading.Thread):
         duration of the tick so that concurrent scheduler instances never
         enqueue the same task twice.
         """
+        try:
+            self._cleanup_stale_executions()
+        except Exception:
+            logger.exception("Stale execution cleanup failed")
+
+        try:
+            self._delete_old_executions()
+        except Exception:
+            logger.exception("Old execution cleanup failed")
+
         now = timezone.now()
 
         with transaction.atomic():
@@ -99,7 +110,7 @@ class PeriodicTaskScheduler(threading.Thread):
 
         if is_exactly_once:
             execution = TaskExecution.objects.create(scheduled_task=st)
-            enqueue_kwargs = {**st.kwargs, "_execution_id": str(execution.id)}
+            enqueue_kwargs = {**st.kwargs, "_periodic_tasks_execution_id": str(execution.id)}
 
             def _deferred_enqueue() -> None:
                 configured.enqueue(*st.args, **enqueue_kwargs)
@@ -114,6 +125,71 @@ class PeriodicTaskScheduler(threading.Thread):
         st.save(update_fields=["last_run_at", "next_run_at", "total_run_count"])
 
         logger.info("Enqueued scheduled task: %s (run #%d)", st.name, st.total_run_count)
+
+    def _cleanup_stale_executions(self) -> None:
+        """Re-enqueue stale PENDING TaskExecutions that were never delivered.
+
+        A TaskExecution can become stale if the scheduler committed the row but
+        the ``on_commit`` callback that enqueues the task never fired (e.g. the
+        process crashed, the connection was reset, etc.).
+
+        Direct enqueue (not ``on_commit``) is safe here because the
+        TaskExecution row was committed in a prior tick's transaction and is
+        already visible to workers.
+        """
+        threshold = timezone.now() - timedelta(seconds=max(60, 2 * self.interval))
+
+        with transaction.atomic():
+            stale = list(
+                TaskExecution.objects.filter(
+                    status=TaskExecution.Status.PENDING,
+                    created_at__lt=threshold,
+                    scheduled_task__enabled=True,
+                )
+                .select_related("scheduled_task")
+                .select_for_update(skip_locked=True)
+            )
+
+        for execution in stale:
+            try:
+                st = execution.scheduled_task
+                task_obj = resolve_task(st.task_path)
+                configured = task_obj.using(
+                    queue_name=st.queue_name,
+                    priority=st.priority,
+                    backend=st.backend,
+                )
+                enqueue_kwargs = {
+                    **st.kwargs,
+                    "_periodic_tasks_execution_id": str(execution.id),
+                }
+                configured.enqueue(*st.args, **enqueue_kwargs)
+                logger.info(
+                    "Re-enqueued stale execution %s for task %s",
+                    execution.id,
+                    st.name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to re-enqueue stale execution %s",
+                    execution.id,
+                )
+
+    def _delete_old_executions(self) -> None:
+        """Bulk-delete non-PENDING TaskExecution rows older than 24 hours.
+
+        COMPLETED and SKIPPED rows have no ongoing purpose once workers have
+        finished processing them.  PENDING rows are preserved because they may
+        still be awaiting delivery or re-enqueue by stale cleanup.
+        """
+        threshold = timezone.now() - timedelta(hours=24)
+        deleted, _ = TaskExecution.objects.filter(
+            created_at__lt=threshold,
+        ).exclude(
+            status=TaskExecution.Status.PENDING,
+        ).delete()
+        if deleted:
+            logger.info("Deleted %d old task execution(s)", deleted)
 
     def stop(self) -> None:
         """Signal the scheduler to stop after the current tick completes."""

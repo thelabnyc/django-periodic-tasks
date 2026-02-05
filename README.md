@@ -33,13 +33,15 @@ def daily_report() -> None:
 
 ### Run the scheduler
 
+Enable the autostart setting so the scheduler runs as a daemon thread inside your Django process:
+
+```python
+# settings.py
+PERIODIC_TASKS_AUTOSTART = True
+```
+
+Or run it as a standalone process:
+
 ```bash
-# With database backend:
-python manage.py scheduler_db_worker
-
-# With RQ backend:
-python manage.py scheduler_rqworker
-
-# Standalone scheduler:
 python manage.py run_scheduler
 ```

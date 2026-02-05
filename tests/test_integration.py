@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from django.test import TestCase, override_settings
+from django.utils import timezone as django_tz
 from django_tasks import default_task_backend, task
 
 from django_periodic_tasks.decorators import exactly_once
@@ -197,11 +198,11 @@ class TestExactlyOnceFullFlow(TestCase):
         self.assertEqual(execution.scheduled_task_id, st.pk)
         self.assertEqual(execution.status, TaskExecution.Status.PENDING)
 
-        # 7. Verify task was enqueued with _execution_id
+        # 7. Verify task was enqueued with _periodic_tasks_execution_id
         self.assertEqual(len(default_task_backend.results), 1)
         result = default_task_backend.results[0]
-        self.assertIn("_execution_id", result.kwargs)
-        self.assertEqual(result.kwargs["_execution_id"], str(execution.id))
+        self.assertIn("_periodic_tasks_execution_id", result.kwargs)
+        self.assertEqual(result.kwargs["_periodic_tasks_execution_id"], str(execution.id))
 
         # 8. Verify tracking updated
         st.refresh_from_db()
@@ -220,7 +221,7 @@ class TestExactlyOnceFullFlow(TestCase):
         execution = TaskExecution.objects.create(scheduled_task=st)
 
         # First call: should run and mark COMPLETED
-        result = exactly_once_integration_task.func(_execution_id=str(execution.id))
+        result = exactly_once_integration_task.func(_periodic_tasks_execution_id=str(execution.id))
         self.assertEqual(result, "exactly-once-done")
 
         execution.refresh_from_db()
@@ -228,10 +229,53 @@ class TestExactlyOnceFullFlow(TestCase):
         self.assertIsNotNone(execution.completed_at)
 
         # Second call with same execution_id: should skip
-        result2 = exactly_once_integration_task.func(_execution_id=str(execution.id))
+        result2 = exactly_once_integration_task.func(_periodic_tasks_execution_id=str(execution.id))
         self.assertIsNone(result2)
 
+    def test_stale_execution_redelivery(self) -> None:
+        """Stale PENDING execution from a failed on_commit gets re-enqueued on next tick."""
+        # 1. Register and sync an exactly_once task
+        registry = ScheduleRegistry()
+        registry.register(
+            exactly_once_integration_task,
+            cron="* * * * *",
+            name="eo-stale-redeliver",
+        )
+        sync_code_schedules(registry)
+
+        # 2. Make it due
+        st = ScheduledTask.objects.get(name="eo-stale-redeliver")
+        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.save(update_fields=["next_run_at"])
+
+        # 3. Tick with on_commit NOT executing — simulates on_commit failure
+        scheduler = PeriodicTaskScheduler(interval=60)
+        with self.captureOnCommitCallbacks(execute=False):
+            scheduler.tick()
+
+        # 4. Verify PENDING TaskExecution exists, no task in queue
+        self.assertEqual(TaskExecution.objects.count(), 1)
+        execution = TaskExecution.objects.first()
+        assert execution is not None
+        self.assertEqual(execution.status, TaskExecution.Status.PENDING)
+        self.assertEqual(len(default_task_backend.results), 0)
+
+        # 5. Backdate execution's created_at to make it stale
+        stale_time = django_tz.now() - timedelta(minutes=10)
+        TaskExecution.objects.filter(id=execution.id).update(created_at=stale_time)
+
+        # 6. Tick again — cleanup should re-enqueue
+        scheduler.tick()
+
+        # 7. Verify task enqueued with correct _periodic_tasks_execution_id
+        self.assertEqual(len(default_task_backend.results), 1)
+        result = default_task_backend.results[0]
+        self.assertIn("_periodic_tasks_execution_id", result.kwargs)
+        self.assertEqual(
+            result.kwargs["_periodic_tasks_execution_id"], str(execution.id)
+        )
+
     def test_exactly_once_manual_invocation_passthrough(self) -> None:
-        """Manual invocation without _execution_id should run normally."""
+        """Manual invocation without _periodic_tasks_execution_id should run normally."""
         result = exactly_once_integration_task.func()
         self.assertEqual(result, "exactly-once-done")

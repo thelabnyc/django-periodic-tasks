@@ -37,8 +37,6 @@ dev = [
     "psycopg[binary]>=3.0",
     "tox>=4.32.0",
     "tox-uv>=1.29.0",
-]
-docs = [
     "mkdocs>=1.6,<2",
     "pymdown-extensions>=10.20,<11",
     "mkdocs-material>=9.7,<10",

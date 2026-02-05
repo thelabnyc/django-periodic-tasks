@@ -2,4 +2,5 @@ nav:
     - index.md
     - getting-started.md
     - defining-schedules.md
+    - exactly-once.md
     - running.md
