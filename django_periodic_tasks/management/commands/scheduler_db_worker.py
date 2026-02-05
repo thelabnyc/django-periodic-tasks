@@ -10,6 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 class Command(DbWorkerCommand):
+    """Run the django-tasks database worker with the periodic scheduler.
+
+    This is the recommended way to run django-periodic-tasks with the
+    ``DatabaseBackend``. It starts the scheduler as a daemon thread alongside
+    the standard ``db_worker`` command, so a single process handles both
+    task execution and periodic scheduling.
+    """
+
     help = "Run a database background worker with periodic task scheduling"
 
     def add_arguments(self, parser: ArgumentParser) -> None:

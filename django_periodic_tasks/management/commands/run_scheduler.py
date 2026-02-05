@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    """Run the periodic task scheduler as a standalone process.
+
+    This command starts the scheduler loop in the main thread (blocking).
+    It syncs code-defined schedules to the database, then repeatedly checks for
+    due tasks and enqueues them. Use this when running the scheduler separately
+    from the task worker, or when using a non-database task backend.
+    """
+
     help = "Run the periodic task scheduler (without a task worker)"
 
     def add_arguments(self, parser: ArgumentParser) -> None:

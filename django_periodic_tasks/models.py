@@ -4,7 +4,26 @@ from django_periodic_tasks.cron import compute_next_run_at
 
 
 class ScheduledTask(models.Model):
+    """A persistent record of a periodic task and its cron schedule.
+
+    Each row represents one scheduled task. The scheduler queries this table on
+    every tick to find tasks whose ``next_run_at`` has passed, then enqueues
+    them via django-tasks.
+
+    Tasks can originate from two sources (see :class:`Source`):
+
+    * **Code-defined** — registered with :func:`~django_periodic_tasks.registry.scheduled_task`
+      and synced to the database on scheduler startup.
+    * **Database-defined** — created manually through the Django admin.
+    """
+
     class Source(models.TextChoices):
+        """Where a scheduled task definition comes from.
+
+        ``CODE`` schedules are managed by the codebase and synced automatically.
+        ``DATABASE`` schedules are managed by operators through the Django admin.
+        """
+
         CODE = "code", "Code"
         DATABASE = "database", "Database"
 

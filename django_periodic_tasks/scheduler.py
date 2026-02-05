@@ -13,6 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class PeriodicTaskScheduler(threading.Thread):
+    """Daemon thread that periodically enqueues due scheduled tasks.
+
+    On each tick the scheduler:
+
+    1. Queries :class:`~django_periodic_tasks.models.ScheduledTask` for rows
+       whose ``next_run_at ≤ now`` and ``enabled = True``.
+    2. Locks those rows with ``SELECT FOR UPDATE SKIP LOCKED`` so multiple
+       scheduler instances can run safely in parallel.
+    3. Resolves each task path to a django-tasks ``Task`` object and calls
+       ``task.using(...).enqueue(...)``.
+    4. Updates ``last_run_at``, ``next_run_at``, and ``total_run_count``.
+
+    Args:
+        interval: Seconds between scheduler ticks (default ``15``).
+    """
+
     daemon = True
 
     def __init__(self, interval: int = 15) -> None:
@@ -21,6 +37,11 @@ class PeriodicTaskScheduler(threading.Thread):
         self._stop_event = threading.Event()
 
     def run(self) -> None:
+        """Start the scheduler loop.
+
+        Syncs code-defined schedules to the database, then enters the
+        tick-sleep loop until :meth:`stop` is called.
+        """
         logger.info("Periodic task scheduler starting (interval=%ds)", self.interval)
         sync_code_schedules()
         while not self._stop_event.is_set():
@@ -69,4 +90,5 @@ class PeriodicTaskScheduler(threading.Thread):
         logger.info("Enqueued scheduled task: %s (run #%d)", st.name, st.total_run_count)
 
     def stop(self) -> None:
+        """Signal the scheduler to stop after the current tick completes."""
         self._stop_event.set()

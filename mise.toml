@@ -27,3 +27,18 @@ run = [
     "docker compose run --rm test uv run coverage run sandbox/manage.py test --noinput -v 2 --buffer tests",
     "docker compose run --rm test uv run coverage report -i -m",
 ]
+
+[tasks.docs-serve]
+description = "Serve docs locally with live reload"
+env = { DJANGO_SETTINGS_MODULE = "sandbox.settings_docgen" }
+run = "uv run mkdocs serve --strict"
+
+[tasks.docs-build]
+description = "Build documentation"
+env = { DJANGO_SETTINGS_MODULE = "sandbox.settings_docgen" }
+run = "uv run mkdocs build --strict"
+
+[tasks.docs]
+description = "Build documentation for deployment"
+depends = ['docs-build']
+run = "rm -rf public/ && mkdir -p public/ && cp -r build/mkdocs/* public/"

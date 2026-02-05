@@ -5,6 +5,7 @@ workflow:
 
 stages:
   - test
+  - docs
   - release
 
 cache:
@@ -31,3 +32,17 @@ test:
         TOX_SKIP_ENV: "^(?!py313-)"
       - IMAGE: "3.14"
         TOX_SKIP_ENV: "^(?!py314-)"
+
+pages:
+  stage: docs
+  image: "registry.gitlab.com/thelabnyc/python:3.14"
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
+  needs:
+    - test
+  script:
+    - uv sync --group docs
+    - mise run docs
+  artifacts:
+    paths:
+      - public

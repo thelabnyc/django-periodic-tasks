@@ -30,5 +30,8 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
+# Docs
+public/
+
 # uv
 uv.lock
