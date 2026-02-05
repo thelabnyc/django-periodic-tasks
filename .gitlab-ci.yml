@@ -14,16 +14,16 @@ cache:
     - $HOME/.cache/pip
 
 include:
-  - component: gitlab.com/thelabnyc/thelab-ci-components/review@0.6.2
-  - component: gitlab.com/thelabnyc/thelab-ci-components/precommit@0.6.2
-  - component: gitlab.com/thelabnyc/thelab-ci-components/publish-gitlab-release@0.6.2
-  - component: gitlab.com/thelabnyc/thelab-ci-components/publish-to-pypi@0.6.2
+  - component: gitlab.com/thelabnyc/thelab-ci-components/review@0.7.0
+  - component: gitlab.com/thelabnyc/thelab-ci-components/precommit@0.7.0
+  - component: gitlab.com/thelabnyc/thelab-ci-components/publish-gitlab-release@0.7.0
+  - component: gitlab.com/thelabnyc/thelab-ci-components/publish-to-pypi@0.7.0
 
 test:
   stage: test
   image: "registry.gitlab.com/thelabnyc/python:${IMAGE}"
   script:
-    - uv sync
+    - uv sync --all-extras
     - uv run tox
   coverage: '/^TOTAL.+?(\d+\%)$/'
   parallel:
@@ -41,7 +41,7 @@ pages:
   needs:
     - test
   script:
-    - uv sync --group docs
+    - uv sync --all-extras
     - mise run docs
   artifacts:
     paths:
