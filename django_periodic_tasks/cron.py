@@ -20,7 +20,10 @@ def compute_next_run_at(
     The base_time is interpreted in the given timezone for cron matching,
     but the result is always returned in UTC.
     """
-    tz = ZoneInfo(timezone_name)
+    try:
+        tz = ZoneInfo(timezone_name)
+    except (KeyError, ValueError) as e:
+        raise ValueError(f"Invalid timezone: {timezone_name}") from e
 
     if base_time is None:
         base_time = datetime.now(tz=timezone.utc)

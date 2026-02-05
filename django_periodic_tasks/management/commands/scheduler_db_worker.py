@@ -22,10 +22,13 @@ class Command(DbWorkerCommand):
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         super().add_arguments(parser)
+        from django.conf import settings
+
+        default_interval: int = getattr(settings, "PERIODIC_TASKS_SCHEDULER_INTERVAL", 15)
         parser.add_argument(
             "--scheduler-interval",
             type=int,
-            default=15,
+            default=default_interval,
             help="Interval in seconds between scheduler ticks (default: %(default)s)",
         )
 
@@ -43,3 +46,4 @@ class Command(DbWorkerCommand):
             super().handle(**options)
         finally:
             scheduler.stop()
+            scheduler.join(timeout=30)

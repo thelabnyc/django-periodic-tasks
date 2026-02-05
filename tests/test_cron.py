@@ -93,3 +93,9 @@ class TestComputeNextRunAt(SimpleTestCase):
         # Next Sunday is Jan 5
         expected = datetime(2025, 1, 5, 0, 0, 0, tzinfo=timezone.utc)
         self.assertEqual(result, expected)
+
+    def test_invalid_timezone_raises_valueerror(self) -> None:
+        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        with self.assertRaises(ValueError) as cm:
+            compute_next_run_at("* * * * *", timezone_name="Not/A/Timezone", base_time=base)
+        self.assertIn("Invalid timezone", str(cm.exception))

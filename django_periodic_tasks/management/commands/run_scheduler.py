@@ -22,10 +22,13 @@ class Command(BaseCommand):
     help = "Run the periodic task scheduler (without a task worker)"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
+        from django.conf import settings
+
+        default_interval: int = getattr(settings, "PERIODIC_TASKS_SCHEDULER_INTERVAL", 15)
         parser.add_argument(
             "--interval",
             type=int,
-            default=15,
+            default=default_interval,
             help="Interval in seconds between scheduler ticks (default: %(default)s)",
         )
 

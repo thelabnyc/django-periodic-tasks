@@ -1,6 +1,11 @@
+import uuid
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
-from django_periodic_tasks.cron import compute_next_run_at
+from django_periodic_tasks.cron import compute_next_run_at, validate_cron_expression
 
 
 class ScheduledTask(models.Model):
@@ -45,7 +50,7 @@ class ScheduledTask(models.Model):
 
     # Execution tracking
     last_run_at = models.DateTimeField(null=True, blank=True)
-    next_run_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    next_run_at = models.DateTimeField(null=True, blank=True)
     total_run_count = models.PositiveIntegerField(default=0)
 
     # Task options (passed to task.using())
@@ -69,9 +74,74 @@ class ScheduledTask(models.Model):
     def __str__(self) -> str:
         return f"{self.name} ({self.cron_expression})"
 
-    def save(self, *args: object, **kwargs: object) -> None:
+    def clean(self) -> None:
+        errors: dict[str, str] = {}
+        if not validate_cron_expression(self.cron_expression):
+            errors["cron_expression"] = f"Invalid cron expression: {self.cron_expression}"
+        try:
+            ZoneInfo(self.timezone)
+        except (KeyError, ValueError):
+            errors["timezone"] = f"Invalid timezone: {self.timezone}"
+        if "." not in self.task_path:
+            errors["task_path"] = "task_path must be a dotted module path (e.g. 'myapp.tasks.my_task')"
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        original_next_run_at = self.next_run_at
+
         if not self.enabled:
             self.next_run_at = None
         elif self.next_run_at is None:
             self.next_run_at = compute_next_run_at(self.cron_expression, self.timezone)
-        super().save(*args, **kwargs)  # type: ignore[arg-type]
+
+        raw_update_fields: list[str] | None = kwargs.get("update_fields")
+        if raw_update_fields is not None:
+            fields = set(raw_update_fields)
+            # Always include updated_at so auto_now fires
+            fields.add("updated_at")
+            # Include next_run_at if save() modified it
+            if self.next_run_at != original_next_run_at:
+                fields.add("next_run_at")
+            kwargs["update_fields"] = list(fields)
+
+        super().save(*args, **kwargs)
+
+
+class TaskExecution(models.Model):
+    """An execution permit for a single scheduled task invocation.
+
+    Used by the ``@exactly_once`` decorator to ensure a task runs at most once
+    per scheduled invocation, even with non-transactional backends (e.g. Redis/RQ).
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        SKIPPED = "skipped", "Skipped"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    scheduled_task = models.ForeignKey(
+        ScheduledTask,
+        on_delete=models.CASCADE,
+        related_name="executions",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["status"],
+                condition=models.Q(status="pending"),
+                name="periodic_pending_exec_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.scheduled_task.name} [{self.status}]"

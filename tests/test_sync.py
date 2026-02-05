@@ -140,3 +140,48 @@ class TestSyncCodeSchedules(TestCase):
         self.assertEqual(st.queue_name, "special")
         self.assertEqual(st.priority, 10)
         self.assertEqual(st.backend, "database")
+
+    def test_sync_recomputes_next_run_at_on_update(self) -> None:
+        """Bug 5: Syncing should recompute next_run_at even when updating existing entries."""
+        self.registry.register(task_a, cron="0 5 * * *", name="task-a")
+        sync_code_schedules(self.registry)
+
+        st = ScheduledTask.objects.get(name="task-a")
+        old_next_run = st.next_run_at
+
+        # Change the cron and re-sync
+        registry2 = ScheduleRegistry()
+        registry2.register(task_a, cron="0 6 * * *", name="task-a")
+        sync_code_schedules(registry2)
+
+        st.refresh_from_db()
+        # next_run_at should have been recomputed for the new cron
+        self.assertNotEqual(st.next_run_at, old_next_run)
+
+    def test_sync_is_atomic(self) -> None:
+        """Bug 4: sync_code_schedules should run inside a transaction."""
+        from unittest.mock import patch
+
+        self.registry.register(task_a, cron="0 5 * * *", name="task-a")
+        self.registry.register(task_b, cron="*/30 * * * *", name="task-b")
+
+        # Make update_or_create fail on the second task
+        real_update_or_create = ScheduledTask.objects.update_or_create.__func__  # type: ignore[attr-defined]
+
+        call_count = 0
+
+        def failing_update_or_create(self_qs: object, **kwargs: object) -> object:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                raise RuntimeError("Simulated failure")
+            return real_update_or_create(self_qs, **kwargs)
+
+        with patch.object(
+            type(ScheduledTask.objects), "update_or_create", failing_update_or_create
+        ):
+            with self.assertRaises(RuntimeError):
+                sync_code_schedules(self.registry)
+
+        # Because of the transaction, neither task should be in the DB
+        self.assertEqual(ScheduledTask.objects.count(), 0)

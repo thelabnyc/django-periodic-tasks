@@ -3,7 +3,7 @@ from typing import Any
 from django.contrib import admin
 from django.http import HttpRequest
 
-from django_periodic_tasks.models import ScheduledTask
+from django_periodic_tasks.models import ScheduledTask, TaskExecution
 
 # Fields that are always read-only (computed/tracking)
 TRACKING_READONLY = ("source", "last_run_at", "next_run_at", "total_run_count", "created_at", "updated_at")
@@ -67,3 +67,20 @@ class ScheduledTaskAdmin(admin.ModelAdmin[ScheduledTask]):
         if obj is not None and obj.source == ScheduledTask.Source.CODE:
             return False
         return super().has_delete_permission(request, obj)
+
+
+@admin.register(TaskExecution)
+class TaskExecutionAdmin(admin.ModelAdmin[TaskExecution]):
+    list_display = ("id", "scheduled_task", "status", "created_at", "completed_at")
+    list_filter = ("status",)
+    search_fields = ("scheduled_task__name",)
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False

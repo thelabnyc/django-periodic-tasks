@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from django_periodic_tasks.cron import compute_next_run_at
-from django_periodic_tasks.models import ScheduledTask
+from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.sync import sync_code_schedules
 from django_periodic_tasks.task_resolver import resolve_task
 
@@ -32,6 +32,8 @@ class PeriodicTaskScheduler(threading.Thread):
     daemon = True
 
     def __init__(self, interval: int = 15) -> None:
+        if interval <= 0:
+            raise ValueError(f"interval must be positive, got {interval}")
         super().__init__(name="periodic-task-scheduler")
         self.interval = interval
         self._stop_event = threading.Event()
@@ -43,9 +45,15 @@ class PeriodicTaskScheduler(threading.Thread):
         tick-sleep loop until :meth:`stop` is called.
         """
         logger.info("Periodic task scheduler starting (interval=%ds)", self.interval)
-        sync_code_schedules()
+        try:
+            sync_code_schedules()
+        except Exception:
+            logger.exception("Failed to sync code schedules on startup")
         while not self._stop_event.is_set():
-            self.tick()
+            try:
+                self.tick()
+            except Exception:
+                logger.exception("Scheduler tick failed")
             self._stop_event.wait(self.interval)
         logger.info("Periodic task scheduler stopped")
 
@@ -69,9 +77,15 @@ class PeriodicTaskScheduler(threading.Thread):
 
             for st in due_tasks:
                 try:
-                    self._process_task(st)
+                    with transaction.atomic():
+                        self._process_task(st)
                 except Exception:
                     logger.exception("Failed to enqueue scheduled task id=%s", st.id)
+                    try:
+                        st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
+                        st.save(update_fields=["next_run_at"])
+                    except Exception:
+                        logger.exception("Failed to advance next_run_at for task id=%s", st.id)
 
     def _process_task(self, st: ScheduledTask) -> None:
         task_obj = resolve_task(st.task_path)
@@ -80,7 +94,19 @@ class PeriodicTaskScheduler(threading.Thread):
             priority=st.priority,
             backend=st.backend,
         )
-        configured.enqueue(*st.args, **st.kwargs)
+
+        is_exactly_once = getattr(task_obj.func, "_exactly_once", False)
+
+        if is_exactly_once:
+            execution = TaskExecution.objects.create(scheduled_task=st)
+            enqueue_kwargs = {**st.kwargs, "_execution_id": str(execution.id)}
+
+            def _deferred_enqueue() -> None:
+                configured.enqueue(*st.args, **enqueue_kwargs)
+
+            transaction.on_commit(_deferred_enqueue)
+        else:
+            configured.enqueue(*st.args, **st.kwargs)
 
         st.last_run_at = timezone.now()
         st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
