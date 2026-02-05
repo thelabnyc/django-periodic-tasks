@@ -49,7 +49,9 @@ pages:
     - test
   script:
     - uv sync --all-extras
-    - mise run docs
+    - uv run mkdocs build --strict
+    - rm -rf ./public
+    - mv ./build/mkdocs ./public
   artifacts:
     paths:
       - public
