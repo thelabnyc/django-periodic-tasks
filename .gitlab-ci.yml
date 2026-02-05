@@ -47,6 +47,8 @@ pages:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
   needs:
     - test
+  variables:
+    DJANGO_SETTINGS_MODULE: sandbox.settings_docgen
   script:
     - uv sync --all-extras
     - uv run mkdocs build --strict
