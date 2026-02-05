@@ -1,7 +1,7 @@
-import threading
-import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
+import threading
+import time
 
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
@@ -10,7 +10,6 @@ from django_tasks import default_task_backend
 
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.scheduler import PeriodicTaskScheduler
-
 
 DUMMY_BACKEND_SETTINGS = {
     "default": {
@@ -323,7 +322,7 @@ class TestSchedulerExactlyOnce(TestCase):
 
         scheduler = PeriodicTaskScheduler(interval=60)
 
-        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+        with self.captureOnCommitCallbacks(execute=True):
             scheduler.tick()
 
         # TaskExecution should exist
@@ -567,9 +566,7 @@ class TestSchedulerDeleteOldExecutions(TestCase):
             next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
         )
 
-    def _create_old_execution(
-        self, st: ScheduledTask, status: str, hours_ago: float = 25
-    ) -> TaskExecution:
+    def _create_old_execution(self, st: ScheduledTask, status: str, hours_ago: float = 25) -> TaskExecution:
         execution = TaskExecution.objects.create(scheduled_task=st, status=status)
         old_time = django_tz.now() - timedelta(hours=hours_ago)
         TaskExecution.objects.filter(id=execution.id).update(created_at=old_time)
@@ -605,4 +602,3 @@ class TestSchedulerDeleteOldExecutions(TestCase):
         scheduler._delete_old_executions()
 
         self.assertEqual(TaskExecution.objects.count(), 1)
-

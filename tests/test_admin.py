@@ -1,6 +1,6 @@
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
-from django.test import TestCase, RequestFactory
+from django.test import RequestFactory, TestCase
 
 from django_periodic_tasks.admin import ScheduledTaskAdmin
 from django_periodic_tasks.models import ScheduledTask
@@ -11,9 +11,7 @@ class TestScheduledTaskAdmin(TestCase):
         self.site = AdminSite()
         self.admin = ScheduledTaskAdmin(ScheduledTask, self.site)
         self.factory = RequestFactory()
-        self.superuser = User.objects.create_superuser(
-            username="admin", password="admin", email="admin@test.com"
-        )
+        self.superuser = User.objects.create_superuser(username="admin", password="admin", email="admin@test.com")
 
     def test_list_display(self) -> None:
         self.assertIn("name", self.admin.list_display)

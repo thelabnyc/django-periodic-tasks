@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_periodic_tasks', '0001_initial'),
+        ("django_periodic_tasks", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='scheduledtask',
-            name='next_run_at',
+            model_name="scheduledtask",
+            name="next_run_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

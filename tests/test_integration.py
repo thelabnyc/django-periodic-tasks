@@ -271,9 +271,7 @@ class TestExactlyOnceFullFlow(TestCase):
         self.assertEqual(len(default_task_backend.results), 1)
         result = default_task_backend.results[0]
         self.assertIn("_periodic_tasks_execution_id", result.kwargs)
-        self.assertEqual(
-            result.kwargs["_periodic_tasks_execution_id"], str(execution.id)
-        )
+        self.assertEqual(result.kwargs["_periodic_tasks_execution_id"], str(execution.id))
 
     def test_exactly_once_manual_invocation_passthrough(self) -> None:
         """Manual invocation without _periodic_tasks_execution_id should run normally."""

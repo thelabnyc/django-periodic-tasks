@@ -1,6 +1,6 @@
+from datetime import datetime, timezone
 import time
 import uuid
-from datetime import datetime, timezone
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError

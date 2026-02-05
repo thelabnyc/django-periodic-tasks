@@ -1,6 +1,6 @@
+from datetime import timedelta
 import logging
 import threading
-from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -82,8 +82,7 @@ class PeriodicTaskScheduler(threading.Thread):
                 ScheduledTask.objects.filter(
                     enabled=True,
                     next_run_at__lte=now,
-                )
-                .select_for_update(skip_locked=True)
+                ).select_for_update(skip_locked=True)
             )
 
             for st in due_tasks:
@@ -183,11 +182,15 @@ class PeriodicTaskScheduler(threading.Thread):
         awaiting delivery or re-enqueue by stale cleanup.
         """
         threshold = timezone.now() - timedelta(hours=24)
-        deleted, _ = TaskExecution.objects.filter(
-            created_at__lt=threshold,
-        ).exclude(
-            status=TaskExecution.Status.PENDING,
-        ).delete()
+        deleted, _ = (
+            TaskExecution.objects.filter(
+                created_at__lt=threshold,
+            )
+            .exclude(
+                status=TaskExecution.Status.PENDING,
+            )
+            .delete()
+        )
         if deleted:
             logger.info("Deleted %d old task execution(s)", deleted)
 

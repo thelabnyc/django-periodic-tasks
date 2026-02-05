@@ -1,7 +1,7 @@
-import logging
-import signal
 from argparse import ArgumentParser
 from types import FrameType
+import logging
+import signal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand

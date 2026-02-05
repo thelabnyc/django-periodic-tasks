@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
 import functools
 import logging
-from typing import Any, Callable
 
 from django.db import transaction
 from django.utils import timezone
@@ -32,14 +33,12 @@ def exactly_once(func: Callable[..., Any]) -> Callable[..., Any]:
         if execution_id is None:
             return func(*args, **kwargs)
 
-        from django_periodic_tasks.models import TaskExecution  # Avoid AppRegistryNotReady
+        from django_periodic_tasks.models import (
+            TaskExecution,  # Avoid AppRegistryNotReady
+        )
 
         with transaction.atomic():
-            execution = (
-                TaskExecution.objects.select_for_update()
-                .filter(id=execution_id, status=TaskExecution.Status.PENDING)
-                .first()
-            )
+            execution = TaskExecution.objects.select_for_update().filter(id=execution_id, status=TaskExecution.Status.PENDING).first()
 
             if execution is None:
                 logger.warning(
