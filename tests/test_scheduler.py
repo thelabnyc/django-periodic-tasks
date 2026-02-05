@@ -373,6 +373,72 @@ class TestSchedulerExactlyOnce(TestCase):
 
 
 @override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
+class TestStaleCleanupConcurrency(TransactionTestCase):
+    """Verify SELECT FOR UPDATE lock is held for the entire stale cleanup loop."""
+
+    def setUp(self) -> None:
+        default_task_backend.clear()
+
+    def _create_stale_execution(self, st: ScheduledTask) -> TaskExecution:
+        execution = TaskExecution.objects.create(scheduled_task=st)
+        stale_time = django_tz.now() - timedelta(minutes=10)
+        TaskExecution.objects.filter(id=execution.id).update(created_at=stale_time)
+        execution.refresh_from_db()
+        return execution
+
+    def test_concurrent_stale_cleanup_no_duplicate_enqueue(self) -> None:
+        """Two schedulers running stale cleanup concurrently must not re-enqueue the same execution twice."""
+        st = ScheduledTask.objects.create(
+            name="concurrent-stale-test",
+            task_path="sandbox.testapp.tasks.exactly_once_task",
+            cron_expression="* * * * *",
+            enabled=True,
+            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+        )
+        self._create_stale_execution(st)
+
+        # Track how many times resolve_task is called across threads.
+        # If the row lock is held for the entire cleanup loop, only one
+        # thread will enter the loop and call resolve_task. If the lock is
+        # released early, both threads will resolve and enqueue.
+        resolve_calls: list[str] = []
+        entered = threading.Event()
+
+        from django_periodic_tasks.task_resolver import resolve_task as original_resolve
+
+        def slow_resolve(task_path: str) -> object:
+            resolve_calls.append(threading.current_thread().name)
+            if len(resolve_calls) == 1:
+                entered.set()
+                time.sleep(0.5)
+            return original_resolve(task_path)
+
+        scheduler_a = PeriodicTaskScheduler(interval=60)
+        scheduler_b = PeriodicTaskScheduler(interval=60)
+
+        def cleanup_in_thread() -> None:
+            try:
+                scheduler_a._cleanup_stale_executions()
+            finally:
+                connection.close()
+
+        with patch("django_periodic_tasks.scheduler.resolve_task", slow_resolve):
+            thread_a = threading.Thread(target=cleanup_in_thread)
+            thread_a.start()
+
+            # Wait for thread A to be inside the enqueue loop (past the lock)
+            entered.wait()
+            # Thread B should skip the locked row (if lock is held correctly)
+            scheduler_b._cleanup_stale_executions()
+
+            thread_a.join()
+
+        # With the bug: both threads call resolve_task -> 2
+        # With the fix: only thread A calls resolve_task -> 1
+        self.assertEqual(len(resolve_calls), 1)
+
+
+@override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
 class TestSchedulerStaleCleanup(TestCase):
     """Tests for stale PENDING TaskExecution cleanup."""
 

@@ -3,6 +3,7 @@ import logging
 import threading
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from django_periodic_tasks.cron import compute_next_run_at
@@ -120,10 +121,10 @@ class PeriodicTaskScheduler(threading.Thread):
 
         st.last_run_at = timezone.now()
         st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
-        st.total_run_count += 1
+        st.total_run_count = F("total_run_count") + 1
         st.save(update_fields=["last_run_at", "next_run_at", "total_run_count"])
 
-        logger.info("Enqueued scheduled task: %s (run #%d)", st.name, st.total_run_count)
+        logger.info("Enqueued scheduled task: %s", st.name)
 
     def _cleanup_stale_executions(self) -> None:
         """Re-enqueue stale PENDING TaskExecutions that were never delivered.
@@ -149,30 +150,30 @@ class PeriodicTaskScheduler(threading.Thread):
                 .select_for_update(skip_locked=True)
             )
 
-        for execution in stale:
-            try:
-                st = execution.scheduled_task
-                task_obj = resolve_task(st.task_path)
-                configured = task_obj.using(
-                    queue_name=st.queue_name,
-                    priority=st.priority,
-                    backend=st.backend,
-                )
-                enqueue_kwargs = {
-                    **st.kwargs,
-                    "_periodic_tasks_execution_id": str(execution.id),
-                }
-                configured.enqueue(*st.args, **enqueue_kwargs)
-                logger.info(
-                    "Re-enqueued stale execution %s for task %s",
-                    execution.id,
-                    st.name,
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to re-enqueue stale execution %s",
-                    execution.id,
-                )
+            for execution in stale:
+                try:
+                    st = execution.scheduled_task
+                    task_obj = resolve_task(st.task_path)
+                    configured = task_obj.using(
+                        queue_name=st.queue_name,
+                        priority=st.priority,
+                        backend=st.backend,
+                    )
+                    enqueue_kwargs = {
+                        **st.kwargs,
+                        "_periodic_tasks_execution_id": str(execution.id),
+                    }
+                    configured.enqueue(*st.args, **enqueue_kwargs)
+                    logger.info(
+                        "Re-enqueued stale execution %s for task %s",
+                        execution.id,
+                        st.name,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to re-enqueue stale execution %s",
+                        execution.id,
+                    )
 
     def _delete_old_executions(self) -> None:
         """Bulk-delete non-PENDING TaskExecution rows older than 24 hours.
