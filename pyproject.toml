@@ -34,6 +34,7 @@ dev = [
     "ruff>=0.14.10",
     "coverage>=7.13.0",
     "django-stubs[compatible-mypy]>=5.2.8",
+    "psycopg[binary]>=3.0",
     "tox>=4.32.0",
     "tox-uv>=1.29.0",
 ]

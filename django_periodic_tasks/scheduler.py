@@ -1,0 +1,72 @@
+import logging
+import threading
+
+from django.db import transaction
+from django.utils import timezone
+
+from django_periodic_tasks.cron import compute_next_run_at
+from django_periodic_tasks.models import ScheduledTask
+from django_periodic_tasks.sync import sync_code_schedules
+from django_periodic_tasks.task_resolver import resolve_task
+
+logger = logging.getLogger(__name__)
+
+
+class PeriodicTaskScheduler(threading.Thread):
+    daemon = True
+
+    def __init__(self, interval: int = 15) -> None:
+        super().__init__(name="periodic-task-scheduler")
+        self.interval = interval
+        self._stop_event = threading.Event()
+
+    def run(self) -> None:
+        logger.info("Periodic task scheduler starting (interval=%ds)", self.interval)
+        sync_code_schedules()
+        while not self._stop_event.is_set():
+            self.tick()
+            self._stop_event.wait(self.interval)
+        logger.info("Periodic task scheduler stopped")
+
+    def tick(self) -> None:
+        """Single scheduler tick: find due tasks, enqueue them."""
+        now = timezone.now()
+
+        # Grab due task IDs with row locking to prevent duplicate processing
+        with transaction.atomic():
+            due_task_ids = list(
+                ScheduledTask.objects.filter(
+                    enabled=True,
+                    next_run_at__lte=now,
+                )
+                .select_for_update(skip_locked=True)
+                .values_list("id", flat=True)
+            )
+
+        # Process each task individually so one failure doesn't affect others
+        for task_id in due_task_ids:
+            try:
+                self._process_task(task_id)
+            except Exception:
+                logger.exception("Failed to enqueue scheduled task id=%s", task_id)
+
+    def _process_task(self, task_id: int) -> None:
+        with transaction.atomic():
+            st = ScheduledTask.objects.select_for_update().get(id=task_id)
+            task_obj = resolve_task(st.task_path)
+            configured = task_obj.using(
+                queue_name=st.queue_name,
+                priority=st.priority,
+                backend=st.backend,
+            )
+            configured.enqueue(*st.args, **st.kwargs)
+
+            st.last_run_at = timezone.now()
+            st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
+            st.total_run_count += 1
+            st.save(update_fields=["last_run_at", "next_run_at", "total_run_count"])
+
+        logger.info("Enqueued scheduled task: %s (run #%d)", st.name, st.total_run_count)
+
+    def stop(self) -> None:
+        self._stop_event.set()

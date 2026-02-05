@@ -1,2 +1,29 @@
 [tools]
 python = "3.14"
+
+[tasks.build]
+description = "Build docker compose images"
+run = "docker compose build"
+
+[tasks.test]
+description = "Run the test suite inside Docker"
+depends = ['build']
+run = "docker compose run --rm test uv run python sandbox/manage.py test --noinput -v 2 --buffer tests"
+
+[tasks.mypy]
+description = "Run mypy type checking inside Docker"
+depends = ['build']
+run = "docker compose run --rm test uv run mypy django_periodic_tasks/ sandbox/"
+
+[tasks.tox]
+description = "Run the full tox test matrix inside Docker"
+depends = ['build']
+run = "docker compose run --rm test uv run tox"
+
+[tasks.coverage]
+description = "Run tests with coverage inside Docker"
+depends = ['build']
+run = [
+    "docker compose run --rm test uv run coverage run sandbox/manage.py test --noinput -v 2 --buffer tests",
+    "docker compose run --rm test uv run coverage report -i -m",
+]

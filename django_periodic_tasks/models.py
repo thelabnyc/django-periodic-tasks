@@ -51,17 +51,8 @@ class ScheduledTask(models.Model):
         return f"{self.name} ({self.cron_expression})"
 
     def save(self, *args: object, **kwargs: object) -> None:
-        if self.enabled and not self._has_explicit_next_run_at(kwargs):
-            self.next_run_at = compute_next_run_at(self.cron_expression, self.timezone)
-        elif not self.enabled:
+        if not self.enabled:
             self.next_run_at = None
+        elif self.next_run_at is None:
+            self.next_run_at = compute_next_run_at(self.cron_expression, self.timezone)
         super().save(*args, **kwargs)  # type: ignore[arg-type]
-
-    def _has_explicit_next_run_at(self, save_kwargs: object) -> bool:
-        """Check if save() was called with update_fields that include next_run_at."""
-        if not isinstance(save_kwargs, dict):
-            return False
-        update_fields = save_kwargs.get("update_fields")
-        if update_fields is not None and "next_run_at" in update_fields:
-            return True
-        return False
