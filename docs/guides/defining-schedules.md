@@ -4,9 +4,10 @@ django-periodic-tasks supports two ways to define scheduled tasks: in code (vers
 
 ## Code-Defined Schedules
 
-Use the `@scheduled_task` decorator to register a django-tasks `Task` for periodic execution:
+Use the `@scheduled_task` decorator to register a django-tasks `Task` for periodic execution. Place your tasks in a `tasks.py` module inside any installed app — django-periodic-tasks automatically discovers these modules at startup using Django's `autodiscover_modules`, similar to how `admin.py` files are discovered:
 
 ```python
+# myapp/tasks.py
 from django_tasks import task
 from django_periodic_tasks.registry import scheduled_task
 
@@ -16,6 +17,9 @@ from django_periodic_tasks.registry import scheduled_task
 def morning_report() -> None:
     ...
 ```
+
+!!! note
+    You can define tasks in any module, but `tasks.py` is auto-discovered. If you use a different module name, make sure it gets imported somewhere (e.g. in your app's `AppConfig.ready()`).
 
 ### Decorator Parameters
 

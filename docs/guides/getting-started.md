@@ -36,7 +36,7 @@ python manage.py migrate
 
 ## Define Your First Scheduled Task
 
-Create a task using django-tasks' `@task()` decorator, then register it for periodic execution with `@scheduled_task()`:
+Create a task using django-tasks' `@task()` decorator, then register it for periodic execution with `@scheduled_task()`. Place your tasks in a `tasks.py` module inside any installed app — django-periodic-tasks automatically discovers these modules at startup (similar to how Django discovers `admin.py` files):
 
 ```python
 # myapp/tasks.py

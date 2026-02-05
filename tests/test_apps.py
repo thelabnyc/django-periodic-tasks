@@ -68,3 +68,9 @@ class TestAppConfigReady(TestCase):
         app.ready()
 
         mock_start.assert_called_once()  # type: ignore[union-attr]
+
+    @patch("django.utils.module_loading.autodiscover_modules")
+    def test_autodiscovers_tasks_modules(self, mock_autodiscover: object) -> None:
+        _get_app().ready()
+
+        mock_autodiscover.assert_called_once_with("tasks")  # type: ignore[union-attr]

@@ -19,6 +19,10 @@ class DjangoPeriodicTasksConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self) -> None:
+        from django.utils.module_loading import autodiscover_modules
+
+        autodiscover_modules("tasks")
+
         global _scheduler  # noqa: PLW0603
 
         from django.conf import settings
