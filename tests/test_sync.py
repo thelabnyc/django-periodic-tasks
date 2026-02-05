@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 from django_tasks import task
 
@@ -160,8 +162,6 @@ class TestSyncCodeSchedules(TestCase):
 
     def test_sync_is_atomic(self) -> None:
         """Bug 4: sync_code_schedules should run inside a transaction."""
-        from unittest.mock import patch
-
         self.registry.register(task_a, cron="0 5 * * *", name="task-a")
         self.registry.register(task_b, cron="*/30 * * * *", name="task-b")
 

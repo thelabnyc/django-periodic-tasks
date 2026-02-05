@@ -3,6 +3,7 @@ import signal
 from argparse import ArgumentParser
 from types import FrameType
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from django_periodic_tasks.scheduler import PeriodicTaskScheduler
@@ -22,8 +23,6 @@ class Command(BaseCommand):
     help = "Run the periodic task scheduler (without a task worker)"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
-        from django.conf import settings
-
         default_interval: int = getattr(settings, "PERIODIC_TASKS_SCHEDULER_INTERVAL", 15)
         parser.add_argument(
             "--interval",

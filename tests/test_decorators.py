@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import TestCase
 from django.utils import timezone
 
@@ -66,8 +68,6 @@ class TestExactlyOnceDecorator(TestCase):
 
     def test_skips_nonexistent_execution(self) -> None:
         """If the execution ID doesn't exist, the function should be skipped."""
-        import uuid
-
         call_log: list[str] = []
 
         @exactly_once

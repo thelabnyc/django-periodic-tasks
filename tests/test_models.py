@@ -1,3 +1,5 @@
+import time
+import uuid
 from datetime import datetime, timezone
 
 from django.core.exceptions import ValidationError
@@ -141,8 +143,6 @@ class TestScheduledTaskCreation(TestCase):
         )
         old_updated_at = task.updated_at
         # Simulate passage of time
-        import time
-
         time.sleep(0.01)
         task.total_run_count = 99
         task.save(update_fields=["total_run_count"])
@@ -260,8 +260,6 @@ class TestTaskExecution(TestCase):
         self.assertIsNone(execution.completed_at)
 
     def test_uuid_primary_key(self) -> None:
-        import uuid
-
         execution = TaskExecution.objects.create(
             scheduled_task=self.scheduled_task,
         )

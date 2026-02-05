@@ -4,6 +4,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from django.apps import AppConfig
+from django.conf import settings
+from django.utils.module_loading import autodiscover_modules
 
 if TYPE_CHECKING:
     from django_periodic_tasks.scheduler import PeriodicTaskScheduler
@@ -19,13 +21,9 @@ class DjangoPeriodicTasksConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self) -> None:
-        from django.utils.module_loading import autodiscover_modules
-
         autodiscover_modules("tasks")
 
         global _scheduler  # noqa: PLW0603
-
-        from django.conf import settings
 
         if not getattr(settings, "PERIODIC_TASKS_AUTOSTART", False):
             return

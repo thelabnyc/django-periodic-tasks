@@ -4,6 +4,9 @@ import functools
 import logging
 from typing import Any, Callable
 
+from django.db import transaction
+from django.utils import timezone
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,10 +32,7 @@ def exactly_once(func: Callable[..., Any]) -> Callable[..., Any]:
         if execution_id is None:
             return func(*args, **kwargs)
 
-        from django.db import transaction
-        from django.utils import timezone
-
-        from django_periodic_tasks.models import TaskExecution
+        from django_periodic_tasks.models import TaskExecution  # Avoid AppRegistryNotReady
 
         with transaction.atomic():
             execution = (
