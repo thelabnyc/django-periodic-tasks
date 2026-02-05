@@ -1,7 +1,10 @@
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings
+from django.db import connection
+from django.test import TestCase, TransactionTestCase, override_settings
 from django_tasks import default_task_backend
 
 from django_periodic_tasks.models import ScheduledTask
@@ -184,3 +187,50 @@ class TestSchedulerThread(TestCase):
         # Stop immediately after first tick
         scheduler._stop_event.set()
         scheduler.run()
+
+
+@override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
+class TestSchedulerConcurrency(TransactionTestCase):
+    def setUp(self) -> None:
+        default_task_backend.clear()
+
+    def test_concurrent_ticks_no_duplicate_enqueue(self) -> None:
+        """Two schedulers ticking concurrently must not enqueue the same task twice."""
+        st = ScheduledTask.objects.create(
+            name="concurrent-test",
+            task_path="sandbox.testapp.tasks.example_task",
+            cron_expression="* * * * *",
+            enabled=True,
+            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+        )
+
+        entered = threading.Event()
+        original_process = PeriodicTaskScheduler._process_task
+
+        def slow_process(self_sched: PeriodicTaskScheduler, task: ScheduledTask) -> None:
+            entered.set()
+            time.sleep(0.5)
+            original_process(self_sched, task)
+
+        scheduler_a = PeriodicTaskScheduler(interval=60)
+        scheduler_b = PeriodicTaskScheduler(interval=60)
+
+        def tick_in_thread() -> None:
+            try:
+                scheduler_a.tick()
+            finally:
+                connection.close()
+
+        with patch.object(PeriodicTaskScheduler, "_process_task", slow_process):
+            thread_a = threading.Thread(target=tick_in_thread)
+            thread_a.start()
+
+            # Wait for thread A to be inside _process_task (lock is held)
+            entered.wait()
+            # Thread B should skip the locked row
+            scheduler_b.tick()
+
+            thread_a.join()
+
+        st.refresh_from_db()
+        self.assertEqual(st.total_run_count, 1)

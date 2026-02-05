@@ -50,42 +50,42 @@ class PeriodicTaskScheduler(threading.Thread):
         logger.info("Periodic task scheduler stopped")
 
     def tick(self) -> None:
-        """Single scheduler tick: find due tasks, enqueue them."""
+        """Single scheduler tick: find and enqueue due tasks.
+
+        All due tasks are locked with ``SELECT FOR UPDATE SKIP LOCKED`` for the
+        duration of the tick so that concurrent scheduler instances never
+        enqueue the same task twice.
+        """
         now = timezone.now()
 
-        # Grab due task IDs with row locking to prevent duplicate processing
         with transaction.atomic():
-            due_task_ids = list(
+            due_tasks = list(
                 ScheduledTask.objects.filter(
                     enabled=True,
                     next_run_at__lte=now,
                 )
                 .select_for_update(skip_locked=True)
-                .values_list("id", flat=True)
             )
 
-        # Process each task individually so one failure doesn't affect others
-        for task_id in due_task_ids:
-            try:
-                self._process_task(task_id)
-            except Exception:
-                logger.exception("Failed to enqueue scheduled task id=%s", task_id)
+            for st in due_tasks:
+                try:
+                    self._process_task(st)
+                except Exception:
+                    logger.exception("Failed to enqueue scheduled task id=%s", st.id)
 
-    def _process_task(self, task_id: int) -> None:
-        with transaction.atomic():
-            st = ScheduledTask.objects.select_for_update().get(id=task_id)
-            task_obj = resolve_task(st.task_path)
-            configured = task_obj.using(
-                queue_name=st.queue_name,
-                priority=st.priority,
-                backend=st.backend,
-            )
-            configured.enqueue(*st.args, **st.kwargs)
+    def _process_task(self, st: ScheduledTask) -> None:
+        task_obj = resolve_task(st.task_path)
+        configured = task_obj.using(
+            queue_name=st.queue_name,
+            priority=st.priority,
+            backend=st.backend,
+        )
+        configured.enqueue(*st.args, **st.kwargs)
 
-            st.last_run_at = timezone.now()
-            st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
-            st.total_run_count += 1
-            st.save(update_fields=["last_run_at", "next_run_at", "total_run_count"])
+        st.last_run_at = timezone.now()
+        st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)
+        st.total_run_count += 1
+        st.save(update_fields=["last_run_at", "next_run_at", "total_run_count"])
 
         logger.info("Enqueued scheduled task: %s (run #%d)", st.name, st.total_run_count)
 
