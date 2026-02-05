@@ -20,21 +20,17 @@ class TestRunSchedulerCommand(TestCase):
         commands = get_commands()
         self.assertIn("run_scheduler", commands)
 
-    @patch.object(PeriodicTaskScheduler, "run")
-    def test_command_runs_scheduler(self, mock_run: object) -> None:
-        out = StringIO()
-        call_command("run_scheduler", "--interval", "30", stdout=out)
-
-    @patch.object(PeriodicTaskScheduler, "run")
-    def test_default_interval(self, mock_run: object) -> None:
-        out = StringIO()
-        call_command("run_scheduler", stdout=out)
-
     @override_settings(PERIODIC_TASKS_SCHEDULER_INTERVAL=42)
     @patch.object(PeriodicTaskScheduler, "run")
     @patch.object(PeriodicTaskScheduler, "__init__", return_value=None)
-    def test_default_interval_from_settings(self, mock_init: MagicMock, mock_run: object) -> None:
-        """Bug 11: Default --interval should come from PERIODIC_TASKS_SCHEDULER_INTERVAL."""
-        out = StringIO()
-        call_command("run_scheduler", stdout=out)
+    def test_command_passes_correct_interval(self, mock_init: MagicMock, mock_run: object) -> None:
+        """Command should pass --interval (or settings default) to the scheduler."""
+        # With explicit --interval flag
+        call_command("run_scheduler", "--interval", "30", stdout=StringIO())
+        mock_init.assert_called_once_with(interval=30)
+
+        mock_init.reset_mock()
+
+        # Without --interval, should use PERIODIC_TASKS_SCHEDULER_INTERVAL setting
+        call_command("run_scheduler", stdout=StringIO())
         mock_init.assert_called_once_with(interval=42)

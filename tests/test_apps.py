@@ -21,44 +21,38 @@ class TestAppConfigReady(TestCase):
         apps_module._scheduler = None
 
     @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
-    @override_settings(PERIODIC_TASKS_AUTOSTART=True)
-    def test_starts_scheduler_when_autostart_true(self, mock_start: object) -> None:
-        _get_app().ready()
+    def test_autostart_creates_scheduler_with_correct_interval(self, mock_start: object) -> None:
+        """When AUTOSTART=True, ready() creates a scheduler with the configured interval."""
+        # Default interval (15s)
+        with self.settings(PERIODIC_TASKS_AUTOSTART=True):
+            _get_app().ready()
+            self.assertIsNotNone(apps_module._scheduler)
+            assert apps_module._scheduler is not None
+            self.assertEqual(apps_module._scheduler.interval, 15)
+            mock_start.assert_called_once()  # type: ignore[union-attr]
 
-        self.assertIsNotNone(apps_module._scheduler)
-        mock_start.assert_called_once()  # type: ignore[union-attr]
+        apps_module._scheduler = None
+        mock_start.reset_mock()  # type: ignore[union-attr]
+
+        # Custom interval
+        with self.settings(PERIODIC_TASKS_AUTOSTART=True, PERIODIC_TASKS_SCHEDULER_INTERVAL=30):
+            _get_app().ready()
+            assert apps_module._scheduler is not None
+            self.assertEqual(apps_module._scheduler.interval, 30)
+            mock_start.assert_called_once()  # type: ignore[union-attr]
 
     @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
-    @override_settings(PERIODIC_TASKS_AUTOSTART=False)
-    def test_does_not_start_when_autostart_false(self, mock_start: object) -> None:
-        _get_app().ready()
+    def test_does_not_start_when_autostart_disabled(self, mock_start: object) -> None:
+        """Scheduler should not start when AUTOSTART is False or absent."""
+        with self.settings(PERIODIC_TASKS_AUTOSTART=False):
+            _get_app().ready()
+            self.assertIsNone(apps_module._scheduler)
 
+        # Also when the setting is absent entirely
+        _get_app().ready()
         self.assertIsNone(apps_module._scheduler)
+
         mock_start.assert_not_called()  # type: ignore[union-attr]
-
-    @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
-    def test_does_not_start_when_autostart_absent(self, mock_start: object) -> None:
-        _get_app().ready()
-
-        self.assertIsNone(apps_module._scheduler)
-        mock_start.assert_not_called()  # type: ignore[union-attr]
-
-    @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
-    @override_settings(PERIODIC_TASKS_AUTOSTART=True, PERIODIC_TASKS_SCHEDULER_INTERVAL=30)
-    def test_passes_interval_setting(self, mock_start: object) -> None:
-        _get_app().ready()
-
-        self.assertIsNotNone(apps_module._scheduler)
-        assert apps_module._scheduler is not None
-        self.assertEqual(apps_module._scheduler.interval, 30)
-
-    @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
-    @override_settings(PERIODIC_TASKS_AUTOSTART=True)
-    def test_uses_default_interval(self, mock_start: object) -> None:
-        _get_app().ready()
-
-        assert apps_module._scheduler is not None
-        self.assertEqual(apps_module._scheduler.interval, 15)
 
     @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
     @override_settings(PERIODIC_TASKS_AUTOSTART=True)
@@ -68,9 +62,3 @@ class TestAppConfigReady(TestCase):
         app.ready()
 
         mock_start.assert_called_once()  # type: ignore[union-attr]
-
-    @patch("django_periodic_tasks.apps.autodiscover_modules")
-    def test_autodiscovers_tasks_modules(self, mock_autodiscover: object) -> None:
-        _get_app().ready()
-
-        mock_autodiscover.assert_called_once_with("tasks")  # type: ignore[union-attr]

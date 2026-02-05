@@ -223,13 +223,6 @@ class TestSchedulerThread(TestCase):
         with self.assertRaises(ValueError):
             PeriodicTaskScheduler(interval=-5)
 
-    @patch.object(PeriodicTaskScheduler, "tick")
-    def test_run_calls_tick(self, mock_tick: object) -> None:
-        scheduler = PeriodicTaskScheduler(interval=1)
-        # Stop immediately after first tick
-        scheduler._stop_event.set()
-        scheduler.run()
-
     @patch("django_periodic_tasks.scheduler.sync_code_schedules", side_effect=RuntimeError("sync boom"))
     def test_run_survives_sync_error(self, mock_sync: object) -> None:
         """Bug 1: run() should not crash if sync_code_schedules raises."""
@@ -513,10 +506,10 @@ class TestSchedulerStaleCleanup(TestCase):
         scheduler_60._cleanup_stale_executions()
         self.assertEqual(len(default_task_backend.results), 0)
 
-    def test_cleanup_failure_does_not_block_tick(self) -> None:
-        """If cleanup raises, the tick should still process due tasks."""
+    def test_cleanup_and_delete_failures_do_not_block_tick(self) -> None:
+        """Exceptions in _cleanup_stale_executions or _delete_old_executions don't block tick."""
         ScheduledTask.objects.create(
-            name="tick-after-cleanup-fail",
+            name="tick-after-failures",
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=True,
@@ -524,10 +517,17 @@ class TestSchedulerStaleCleanup(TestCase):
         )
 
         scheduler = PeriodicTaskScheduler(interval=60)
-        with patch.object(
-            PeriodicTaskScheduler,
-            "_cleanup_stale_executions",
-            side_effect=RuntimeError("cleanup boom"),
+        with (
+            patch.object(
+                PeriodicTaskScheduler,
+                "_cleanup_stale_executions",
+                side_effect=RuntimeError("cleanup boom"),
+            ),
+            patch.object(
+                PeriodicTaskScheduler,
+                "_delete_old_executions",
+                side_effect=RuntimeError("delete boom"),
+            ),
         ):
             scheduler.tick()
 
@@ -606,22 +606,3 @@ class TestSchedulerDeleteOldExecutions(TestCase):
 
         self.assertEqual(TaskExecution.objects.count(), 1)
 
-    def test_delete_failure_does_not_block_tick(self) -> None:
-        """Exception in _delete_old_executions doesn't block tick."""
-        ScheduledTask.objects.create(
-            name="tick-after-delete-fail",
-            task_path="sandbox.testapp.tasks.example_task",
-            cron_expression="* * * * *",
-            enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
-        )
-
-        scheduler = PeriodicTaskScheduler(interval=60)
-        with patch.object(
-            PeriodicTaskScheduler,
-            "_delete_old_executions",
-            side_effect=RuntimeError("delete boom"),
-        ):
-            scheduler.tick()
-
-        self.assertEqual(len(default_task_backend.results), 1)
