@@ -33,6 +33,13 @@ Or directly with docker compose:
 docker compose run --rm test uv run python sandbox/manage.py test --noinput -v 2 tests
 ```
 
+## Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `PERIODIC_TASKS_AUTOSTART` | `bool` | `False` | Start scheduler daemon thread on `AppConfig.ready()` |
+| `PERIODIC_TASKS_SCHEDULER_INTERVAL` | `int` | `15` | Seconds between scheduler ticks |
+
 ## Key Conventions
 
 - Python 3.13+ required

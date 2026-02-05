@@ -23,6 +23,9 @@ venv/
 htmlcov/
 coverage.xml
 
+# Database
+*.sqlite3
+
 # OS
 .DS_Store
 Thumbs.db
