@@ -1,0 +1,44 @@
+repos:
+  - repo: https://gitlab.com/thelabnyc/thelab-pre-commit-hooks
+    rev: v0.0.3
+    hooks:
+      - id: update-copyright-year
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-yaml
+        args: [--unsafe]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: [--py313-plus]
+
+  - repo: https://github.com/adamchainz/django-upgrade
+    rev: "1.29.1"
+    hooks:
+    -   id: django-upgrade
+
+  - repo: https://github.com/pycqa/isort
+    rev: "7.0.0"
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff
+      - id: ruff-format
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.10.1
+    hooks:
+      - id: commitizen

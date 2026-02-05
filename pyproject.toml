@@ -1,0 +1,116 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "django-periodic-tasks"
+version = "0.1.0"
+description = "Periodic/cron task scheduling for django-tasks. Backend-agnostic replacement for celery-beat."
+authors = [
+    {name = "thelab", email = "thelabdev@thelab.co"}
+]
+license = {text = "ISC"}
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=5.2",
+    "django-tasks>=0.7",
+    "croniter>=1.0",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/thelabnyc/django-periodic-tasks"
+Repository = "https://gitlab.com/thelabnyc/django-periodic-tasks"
+
+[project.optional-dependencies]
+rq = [
+    "django-tasks[rq]",
+    "django-rq",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "ruff>=0.14.10",
+    "coverage>=7.13.0",
+    "django-stubs[compatible-mypy]>=5.2.8",
+    "tox>=4.32.0",
+    "tox-uv>=1.29.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["django_periodic_tasks"]
+
+[[tool.uv.index]]
+name = "thelabnyc"
+url = "https://gitlab.com/api/v4/groups/269576/-/packages/pypi/simple"
+explicit = true
+
+[tool.isort]
+profile = "black"
+from_first = true
+
+[tool.ruff]
+line-length = 160
+
+[tool.ruff.lint.isort]
+from-first = true
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+
+warn_unused_configs = true
+disallow_subclassing_any = true
+disallow_any_generics = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+show_error_codes = true
+strict_equality = true
+
+[tool.django-stubs]
+django_settings_module = "sandbox.settings"
+
+[[tool.mypy.overrides]]
+module = "croniter.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "django_tasks.*"
+ignore_missing_imports = true
+
+[tool.coverage.run]
+branch = true
+source_pkgs = ["django_periodic_tasks"]
+
+[tool.coverage.report]
+show_missing = true
+ignore_errors = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+annotated_tag = true
+gpg_sign = true
+tag_format = "v$version"
+update_changelog_on_bump = true
+changelog_merge_prerelease = true
+version_provider = "pep621"
+version_scheme = "pep440"
+version_files = [
+    "pyproject.toml:version",
+]
+pre_bump_hooks = [
+    "pre-commit run --all-files || true",
+    "uv build",
+]
+post_bump_hooks = [
+    "git push origin master $CZ_POST_CURRENT_TAG_VERSION"
+]
