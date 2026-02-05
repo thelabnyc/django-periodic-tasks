@@ -118,7 +118,6 @@ class TaskExecution(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         COMPLETED = "completed", "Completed"
-        SKIPPED = "skipped", "Skipped"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scheduled_task = models.ForeignKey(

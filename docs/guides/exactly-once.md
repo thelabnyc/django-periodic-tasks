@@ -70,7 +70,7 @@ The scheduler automatically detects stale `PENDING` executions older than `max(6
 
 ## Automatic Cleanup
 
-Completed and skipped `TaskExecution` rows are automatically deleted after 24 hours. `PENDING` rows are preserved until they are delivered or re-enqueued by the stale execution recovery process.
+Completed `TaskExecution` rows are automatically deleted after 24 hours. `PENDING` rows are preserved until they are delivered or re-enqueued by the stale execution recovery process.
 
 ## When to Use It
 

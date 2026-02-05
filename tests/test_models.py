@@ -270,7 +270,6 @@ class TestTaskExecution(TestCase):
     def test_status_choices(self) -> None:
         self.assertEqual(TaskExecution.Status.PENDING, "pending")
         self.assertEqual(TaskExecution.Status.COMPLETED, "completed")
-        self.assertEqual(TaskExecution.Status.SKIPPED, "skipped")
 
     def test_cascade_delete(self) -> None:
         TaskExecution.objects.create(scheduled_task=self.scheduled_task)

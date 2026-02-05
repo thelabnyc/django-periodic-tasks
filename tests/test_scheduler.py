@@ -586,16 +586,6 @@ class TestSchedulerDeleteOldExecutions(TestCase):
 
         self.assertEqual(TaskExecution.objects.count(), 0)
 
-    def test_delete_old_skipped_executions(self) -> None:
-        """SKIPPED execution older than 24h is deleted."""
-        st = self._create_task()
-        self._create_old_execution(st, TaskExecution.Status.SKIPPED)
-
-        scheduler = PeriodicTaskScheduler(interval=60)
-        scheduler._delete_old_executions()
-
-        self.assertEqual(TaskExecution.objects.count(), 0)
-
     def test_delete_preserves_pending(self) -> None:
         """PENDING execution older than 24h is NOT deleted."""
         st = self._create_task()

@@ -23,4 +23,3 @@ The lifecycle status of an execution permit.
 
 - `PENDING` — Created by the scheduler, awaiting worker pickup.
 - `COMPLETED` — The `@exactly_once` decorator ran the task successfully.
-- `SKIPPED` — The execution was skipped (e.g. the row was no longer `PENDING` when the worker acquired the lock).

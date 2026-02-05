@@ -178,9 +178,9 @@ class PeriodicTaskScheduler(threading.Thread):
     def _delete_old_executions(self) -> None:
         """Bulk-delete non-PENDING TaskExecution rows older than 24 hours.
 
-        COMPLETED and SKIPPED rows have no ongoing purpose once workers have
-        finished processing them.  PENDING rows are preserved because they may
-        still be awaiting delivery or re-enqueue by stale cleanup.
+        COMPLETED rows have no ongoing purpose once workers have finished
+        processing them.  PENDING rows are preserved because they may still be
+        awaiting delivery or re-enqueue by stale cleanup.
         """
         threshold = timezone.now() - timedelta(hours=24)
         deleted, _ = TaskExecution.objects.filter(
