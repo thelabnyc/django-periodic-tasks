@@ -1,0 +1,67 @@
+from django.db import models
+
+from django_periodic_tasks.cron import compute_next_run_at
+
+
+class ScheduledTask(models.Model):
+    class Source(models.TextChoices):
+        CODE = "code", "Code"
+        DATABASE = "database", "Database"
+
+    # Identity
+    name = models.CharField(max_length=200, unique=True)
+    task_path = models.CharField(max_length=200)
+
+    # Schedule
+    cron_expression = models.CharField(max_length=200)
+    timezone = models.CharField(max_length=63, default="UTC")
+
+    # Arguments (passed to task.enqueue())
+    args = models.JSONField(default=list, blank=True)
+    kwargs = models.JSONField(default=dict, blank=True)
+
+    # Source & Status
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.DATABASE)
+    enabled = models.BooleanField(default=True)
+
+    # Execution tracking
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    next_run_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    total_run_count = models.PositiveIntegerField(default=0)
+
+    # Task options (passed to task.using())
+    queue_name = models.CharField(max_length=32, default="default", blank=True)
+    priority = models.IntegerField(default=0)
+    backend = models.CharField(max_length=32, default="default", blank=True)
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["next_run_at"],
+                condition=models.Q(enabled=True),
+                name="periodic_due_tasks_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.cron_expression})"
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.enabled and not self._has_explicit_next_run_at(kwargs):
+            self.next_run_at = compute_next_run_at(self.cron_expression, self.timezone)
+        elif not self.enabled:
+            self.next_run_at = None
+        super().save(*args, **kwargs)  # type: ignore[arg-type]
+
+    def _has_explicit_next_run_at(self, save_kwargs: object) -> bool:
+        """Check if save() was called with update_fields that include next_run_at."""
+        if not isinstance(save_kwargs, dict):
+            return False
+        update_fields = save_kwargs.get("update_fields")
+        if update_fields is not None and "next_run_at" in update_fields:
+            return True
+        return False
