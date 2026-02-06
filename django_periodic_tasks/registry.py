@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol, Self
 
 from django_periodic_tasks.cron import validate_cron_expression
 
@@ -15,10 +15,28 @@ class TaskLike(Protocol):
     ``Task[..., object]``.  This protocol captures just the attributes the
     registry needs, so any ``Task[P, T]`` matches regardless of its concrete
     parameter and return types.
+
+    Covers both ``django-tasks`` (third-party) and ``django.tasks`` (Django 6.0+).
+    ``Any`` is used for generic-dependent signatures (``func``, ``enqueue``) so
+    that concrete ``Task[P, T]`` instances satisfy the protocol regardless of
+    their type parameters.
     """
 
     @property
     def module_path(self) -> str: ...
+
+    @property
+    def func(self) -> Callable[..., Any]: ...
+
+    def using(
+        self,
+        *,
+        priority: int | None = ...,
+        queue_name: str | None = ...,
+        backend: str | None = ...,
+    ) -> Self: ...
+
+    def enqueue(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 @dataclass(frozen=True)

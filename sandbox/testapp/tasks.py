@@ -1,5 +1,4 @@
-from django_tasks import task
-
+from django_periodic_tasks.compat import task
 from django_periodic_tasks.decorators import exactly_once
 
 

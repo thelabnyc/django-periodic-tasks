@@ -15,11 +15,19 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_tasks",
-    "django_tasks.backends.database",
     "django_periodic_tasks",
     "sandbox.testapp",
 ]
+
+# Conditionally add django_tasks apps when the third-party package is installed.
+# Django 6.0+ has native django.tasks which doesn't need INSTALLED_APPS entries.
+try:
+    import django_tasks  # noqa: F401
+
+    INSTALLED_APPS.insert(-2, "django_tasks")
+    INSTALLED_APPS.insert(-2, "django_tasks.backends.database")
+except ImportError:
+    pass
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -59,9 +67,17 @@ DATABASES = {
     }
 }
 
+# Detect the correct DummyBackend path
+try:
+    import django_tasks.backends.dummy  # noqa: F401
+
+    _dummy_backend = "django_tasks.backends.dummy.DummyBackend"
+except ImportError:
+    _dummy_backend = "django.tasks.backends.dummy.DummyBackend"
+
 TASKS = {
     "default": {
-        "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+        "BACKEND": _dummy_backend,
         "ENQUEUE_ON_COMMIT": False,
     }
 }

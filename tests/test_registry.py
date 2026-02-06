@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
-from django_tasks import task
 
+from django_periodic_tasks.compat import task
 from django_periodic_tasks.registry import (
     ScheduleEntry,
     ScheduleRegistry,

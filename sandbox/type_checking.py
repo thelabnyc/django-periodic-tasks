@@ -9,8 +9,7 @@ runtime.  It verifies that our generic type annotations actually work:
   ``warn_unused_ignores`` setting will flag the regression.
 """
 
-from django_tasks import task
-
+from django_periodic_tasks.compat import task
 from django_periodic_tasks.decorators import exactly_once, is_exactly_once
 from django_periodic_tasks.registry import ScheduleRegistry, scheduled_task
 

@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
 from django.test import TestCase
-from django_tasks import task
 
+from django_periodic_tasks.compat import task
 from django_periodic_tasks.models import ScheduledTask
 from django_periodic_tasks.registry import ScheduleRegistry
 from django_periodic_tasks.sync import sync_code_schedules

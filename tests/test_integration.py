@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 from django.test import TestCase, override_settings
 from django.utils import timezone as django_tz
-from django_tasks import default_task_backend, task
 
+from django_periodic_tasks.compat import DUMMY_BACKEND_PATH, default_task_backend, task
 from django_periodic_tasks.decorators import exactly_once
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.registry import ScheduleRegistry
@@ -12,7 +12,7 @@ from django_periodic_tasks.sync import sync_code_schedules
 
 DUMMY_BACKEND_SETTINGS = {
     "default": {
-        "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+        "BACKEND": DUMMY_BACKEND_PATH,
         "ENQUEUE_ON_COMMIT": False,
     }
 }

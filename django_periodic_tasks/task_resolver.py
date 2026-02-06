@@ -1,9 +1,10 @@
 from importlib import import_module
 
-from django_tasks.base import Task
+from django_periodic_tasks.compat import TASK_CLASSES
+from django_periodic_tasks.registry import TaskLike
 
 
-def resolve_task(task_path: str) -> Task[..., object]:
+def resolve_task(task_path: str) -> TaskLike:
     """Import and return a django-tasks Task object from its dotted module path.
 
     The task_path should be a dotted path like "myapp.tasks.my_task".
@@ -15,7 +16,7 @@ def resolve_task(task_path: str) -> Task[..., object]:
     module = import_module(module_path)
     obj = getattr(module, attr_name)
 
-    if not isinstance(obj, Task):
+    if not isinstance(obj, TASK_CLASSES):
         raise TypeError(f"{task_path} is not a django-tasks Task instance (got {type(obj).__name__})")
 
-    return obj
+    return obj  # type: ignore[return-value]

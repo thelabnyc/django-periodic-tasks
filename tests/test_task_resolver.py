@@ -1,17 +1,17 @@
 from django.test import SimpleTestCase
-from django_tasks.base import Task
 
+from django_periodic_tasks.compat import TASK_CLASSES
 from django_periodic_tasks.task_resolver import resolve_task
 
 
 class TestResolveTask(SimpleTestCase):
     def test_resolve_valid_task(self) -> None:
         task = resolve_task("sandbox.testapp.tasks.example_task")
-        self.assertIsInstance(task, Task)
+        self.assertIsInstance(task, TASK_CLASSES)
 
     def test_resolve_task_with_args(self) -> None:
         task = resolve_task("sandbox.testapp.tasks.example_task_with_args")
-        self.assertIsInstance(task, Task)
+        self.assertIsInstance(task, TASK_CLASSES)
 
     def test_resolve_missing_module(self) -> None:
         with self.assertRaises(ImportError):

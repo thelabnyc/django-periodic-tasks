@@ -237,15 +237,17 @@ wheels = [
 
 [[package]]
 name = "django-periodic-tasks"
-version = "0.1.0a4"
+version = "0.1.0a5"
 source = { editable = "." }
 dependencies = [
     { name = "croniter" },
     { name = "django" },
-    { name = "django-tasks" },
 ]
 
 [package.optional-dependencies]
+django-tasks = [
+    { name = "django-tasks" },
+]
 rq = [
     { name = "django-rq" },
     { name = "django-tasks", extra = ["rq"] },
@@ -275,10 +277,10 @@ requires-dist = [
     { name = "croniter", specifier = ">=1.0" },
     { name = "django", specifier = ">=5.2" },
     { name = "django-rq", marker = "extra == 'rq'" },
-    { name = "django-tasks", specifier = ">=0.7" },
+    { name = "django-tasks", marker = "extra == 'django-tasks'", specifier = ">=0.7" },
     { name = "django-tasks", extras = ["rq"], marker = "extra == 'rq'" },
 ]
-provides-extras = ["rq"]
+provides-extras = ["django-tasks", "rq"]
 
 [package.metadata.requires-dev]
 dev = [

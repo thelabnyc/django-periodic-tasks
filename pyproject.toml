@@ -14,7 +14,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "django>=5.2",
-    "django-tasks>=0.7",
     "croniter>=1.0",
 ]
 
@@ -23,6 +22,9 @@ Homepage = "https://gitlab.com/thelabnyc/django-periodic-tasks"
 Repository = "https://gitlab.com/thelabnyc/django-periodic-tasks"
 
 [project.optional-dependencies]
+django-tasks = [
+    "django-tasks>=0.7",
+]
 rq = [
     "django-tasks[rq]",
     "django-rq",
@@ -94,6 +96,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "django_tasks.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "django.tasks.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]

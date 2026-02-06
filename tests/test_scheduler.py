@@ -6,14 +6,14 @@ import time
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone as django_tz
-from django_tasks import default_task_backend
 
+from django_periodic_tasks.compat import DUMMY_BACKEND_PATH, default_task_backend
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.scheduler import PeriodicTaskScheduler
 
 DUMMY_BACKEND_SETTINGS = {
     "default": {
-        "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+        "BACKEND": DUMMY_BACKEND_PATH,
         "ENQUEUE_ON_COMMIT": False,
         "QUEUES": ["default", "special"],
     }
