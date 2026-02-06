@@ -20,16 +20,31 @@ def is_exactly_once(func: object) -> bool:
 def exactly_once[R](func: Callable[..., R]) -> Callable[..., R | None]:
     """Decorator ensuring a scheduled task runs at most once per invocation.
 
-    When the scheduler creates a ``TaskExecution`` row and passes its ID via
-    the ``_periodic_tasks_execution_id`` keyword argument, this decorator will:
+    When :meth:`~django_periodic_tasks.models.ScheduledTask.enqueue_now` (used
+    by both the scheduler and the Django admin "Run now" action) creates a
+    ``TaskExecution`` row and passes its ID via the
+    ``_periodic_tasks_execution_id`` keyword argument, this decorator will:
 
     1. Pop ``_periodic_tasks_execution_id`` from kwargs.
     2. Lock the ``TaskExecution`` row with ``SELECT FOR UPDATE``.
     3. Run the wrapped function only if the row's status is ``PENDING``.
     4. Mark the row ``COMPLETED`` on success.
 
-    If ``_periodic_tasks_execution_id`` is absent (e.g. manual invocation), the wrapped
-    function runs normally without any execution-permit logic.
+    If ``_periodic_tasks_execution_id`` is absent (e.g. manual invocation), the
+    wrapped function runs normally without any execution-permit logic.
+
+    .. warning::
+
+        This decorator is designed exclusively for tasks managed by
+        :class:`~django_periodic_tasks.models.ScheduledTask`.  The
+        deduplication guarantee depends on
+        :func:`~django_periodic_tasks.enqueue.enqueue_scheduled_task` creating a
+        ``TaskExecution`` row and injecting ``_periodic_tasks_execution_id``
+        into the task kwargs before enqueue.
+
+        Calling a ``@exactly_once``-decorated task directly via
+        ``task.enqueue()`` (bypassing ``ScheduledTask``) will run the function
+        normally but **without** any deduplication protection.
     """
 
     @functools.wraps(func)

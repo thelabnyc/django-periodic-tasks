@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import django_stubs_ext
+
+django_stubs_ext.monkeypatch()
+
 BASE_DIR = Path(__file__).resolve().parent
 
 SECRET_KEY = "insecure-test-secret-key"
