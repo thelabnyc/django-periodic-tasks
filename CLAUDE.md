@@ -39,6 +39,7 @@ docker compose run --rm test uv run python sandbox/manage.py test --noinput -v 2
 |---------|------|---------|-------------|
 | `PERIODIC_TASKS_AUTOSTART` | `bool` | `False` | Start scheduler daemon thread on `AppConfig.ready()` |
 | `PERIODIC_TASKS_SCHEDULER_INTERVAL` | `int` | `15` | Seconds between scheduler ticks |
+| `PERIODIC_TASKS_SCHEDULER_CLASS` | `str` | `"django_periodic_tasks.scheduler.PeriodicTaskScheduler"` | Dotted path to the scheduler class. Subclass `PeriodicTaskScheduler` to customize behavior. |
 
 ## Key Conventions
 

@@ -34,3 +34,22 @@ class TestRunSchedulerCommand(TestCase):
         # Without --interval, should use PERIODIC_TASKS_SCHEDULER_INTERVAL setting
         call_command("run_scheduler", stdout=StringIO())
         mock_init.assert_called_once_with(interval=42)
+
+    @override_settings(
+        PERIODIC_TASKS_SCHEDULER_CLASS="django_periodic_tasks.scheduler.PeriodicTaskScheduler",
+    )
+    @patch.object(PeriodicTaskScheduler, "run")
+    @patch.object(PeriodicTaskScheduler, "__init__", return_value=None)
+    def test_command_respects_custom_scheduler_class(self, mock_init: MagicMock, mock_run: object) -> None:
+        """Command should use the class from PERIODIC_TASKS_SCHEDULER_CLASS."""
+        call_command("run_scheduler", stdout=StringIO())
+        mock_init.assert_called_once_with(interval=15)
+        mock_run.assert_called_once()  # type: ignore[union-attr]
+
+    @override_settings(
+        PERIODIC_TASKS_SCHEDULER_CLASS="nonexistent.module.Scheduler",
+    )
+    def test_command_invalid_scheduler_class_raises(self) -> None:
+        """An invalid PERIODIC_TASKS_SCHEDULER_CLASS path raises ImportError."""
+        with self.assertRaises(ImportError):
+            call_command("run_scheduler", stdout=StringIO())
