@@ -284,7 +284,7 @@ provides-extras = ["django-tasks", "rq"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "coverage", specifier = ">=7.13.2" },
+    { name = "coverage", specifier = ">=7.13.3" },
     { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=5.2.8" },
     { name = "django-stubs-ext", specifier = ">=5.2,<6" },
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
