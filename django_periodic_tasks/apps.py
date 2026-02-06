@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import logging
 
 from django.apps import AppConfig
 from django.conf import settings
 from django.utils.module_loading import autodiscover_modules
 
-if TYPE_CHECKING:
-    from django_periodic_tasks.scheduler import PeriodicTaskScheduler
+from django_periodic_tasks.conf import SchedulerProtocol, get_scheduler_class
 
 logger = logging.getLogger(__name__)
 
-_scheduler: PeriodicTaskScheduler | None = None
+_scheduler: SchedulerProtocol | None = None
 
 
 class DjangoPeriodicTasksConfig(AppConfig):
@@ -31,9 +29,8 @@ class DjangoPeriodicTasksConfig(AppConfig):
         if _scheduler is not None:
             return
 
-        from django_periodic_tasks.scheduler import PeriodicTaskScheduler
-
+        scheduler_class = get_scheduler_class()
         interval: int = getattr(settings, "PERIODIC_TASKS_SCHEDULER_INTERVAL", 15)
-        _scheduler = PeriodicTaskScheduler(interval=interval)
+        _scheduler = scheduler_class(interval=interval)
         _scheduler.start()
         logger.info("Auto-started periodic task scheduler (interval=%ds)", interval)

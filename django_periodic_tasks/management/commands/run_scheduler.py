@@ -6,7 +6,7 @@ import signal
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from django_periodic_tasks.scheduler import PeriodicTaskScheduler
+from django_periodic_tasks.conf import get_scheduler_class
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ class Command(BaseCommand):
     def handle(self, *, interval: int, verbosity: int, **options: object) -> None:
         self._configure_logging(verbosity)
 
-        scheduler = PeriodicTaskScheduler(interval=interval)
+        scheduler_class = get_scheduler_class()
+        scheduler = scheduler_class(interval=interval)
         logger.info("Starting periodic task scheduler (interval=%ds)", interval)
 
         def shutdown(signum: int, frame: FrameType | None) -> None:

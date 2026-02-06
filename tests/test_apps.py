@@ -62,3 +62,27 @@ class TestAppConfigReady(TestCase):
         app.ready()
 
         mock_start.assert_called_once()  # type: ignore[union-attr]
+
+    @patch("django_periodic_tasks.scheduler.PeriodicTaskScheduler.start")
+    @override_settings(
+        PERIODIC_TASKS_AUTOSTART=True,
+        PERIODIC_TASKS_SCHEDULER_CLASS="django_periodic_tasks.scheduler.PeriodicTaskScheduler",
+    )
+    def test_custom_scheduler_class_setting(self, mock_start: object) -> None:
+        """When PERIODIC_TASKS_SCHEDULER_CLASS is set, ready() uses that class."""
+        _get_app().ready()
+        self.assertIsNotNone(apps_module._scheduler)
+        assert apps_module._scheduler is not None
+        from django_periodic_tasks.scheduler import PeriodicTaskScheduler
+
+        self.assertIsInstance(apps_module._scheduler, PeriodicTaskScheduler)
+        mock_start.assert_called_once()  # type: ignore[union-attr]
+
+    @override_settings(
+        PERIODIC_TASKS_AUTOSTART=True,
+        PERIODIC_TASKS_SCHEDULER_CLASS="nonexistent.module.Scheduler",
+    )
+    def test_invalid_scheduler_class_raises(self) -> None:
+        """An invalid PERIODIC_TASKS_SCHEDULER_CLASS path raises ImportError."""
+        with self.assertRaises(ImportError):
+            _get_app().ready()
