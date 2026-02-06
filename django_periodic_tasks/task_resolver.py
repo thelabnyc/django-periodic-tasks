@@ -1,7 +1,33 @@
 from importlib import import_module
+import sys
 
 from django_periodic_tasks.compat import TASK_CLASSES
 from django_periodic_tasks.registry import TaskLike
+
+
+def get_all_task_choices() -> list[tuple[str, str]]:
+    """Scan sys.modules for Task instances and return as Django choices.
+
+    Returns a sorted list of (task_path, task_path) tuples suitable for use
+    as the ``choices`` argument on a model field.
+    """
+    seen: set[str] = set()
+    for module in list(sys.modules.values()):
+        try:
+            attrs = vars(module)
+        except Exception:
+            continue
+        for attr_name, obj in attrs.items():
+            if attr_name.startswith("_"):
+                continue
+            if not isinstance(obj, TASK_CLASSES):
+                continue
+            module_name = getattr(module, "__name__", None)
+            if module_name is None:
+                continue
+            path = f"{module_name}.{attr_name}"
+            seen.add(path)
+    return sorted((path, path) for path in seen)
 
 
 def resolve_task(task_path: str) -> TaskLike:

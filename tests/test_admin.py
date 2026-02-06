@@ -1,5 +1,6 @@
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
+from django.forms import Select
 from django.test import RequestFactory, TestCase
 
 from django_periodic_tasks.admin import ScheduledTaskAdmin
@@ -92,3 +93,11 @@ class TestScheduledTaskAdmin(TestCase):
     def test_search_fields(self) -> None:
         self.assertIn("name", self.admin.search_fields)
         self.assertIn("task_path", self.admin.search_fields)
+
+    def test_task_path_renders_as_select(self) -> None:
+        request = self.factory.get("/admin/")
+        request.user = self.superuser
+        form_class = self.admin.get_form(request, obj=None)
+        form = form_class()
+        widget = form.fields["task_path"].widget
+        self.assertIsInstance(widget, Select)

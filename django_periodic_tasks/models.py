@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models.base import ModelBase
 
 from django_periodic_tasks.cron import compute_next_run_at, validate_cron_expression
+from django_periodic_tasks.task_resolver import get_all_task_choices
 
 
 class ScheduledTask(models.Model):
@@ -35,7 +36,7 @@ class ScheduledTask(models.Model):
 
     # Identity
     name = models.CharField(max_length=200, unique=True)
-    task_path = models.CharField(max_length=200)
+    task_path = models.CharField(max_length=200, choices=get_all_task_choices)
 
     # Schedule
     cron_expression = models.CharField(max_length=200)
