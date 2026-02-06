@@ -42,7 +42,7 @@ test:
 
 pages:
   stage: docs
-  image: "registry.gitlab.com/thelabnyc/python:3.14"
+  image: "registry.gitlab.com/thelabnyc/python:3.14@sha256:1ec621a105849222b1eaa6f3d90d5bbb16fefdbb90befb77350a4424c164ca4c"
   rules:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
   needs:
