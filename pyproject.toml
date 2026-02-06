@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-periodic-tasks"
-version = "0.1.0b0"
+version = "0.1.0"
 description = "Periodic/cron task scheduling for django-tasks. Backend-agnostic replacement for celery-beat."
 authors = [
     {name = "thelab", email = "thelabdev@thelab.co"}
