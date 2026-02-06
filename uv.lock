@@ -237,7 +237,7 @@ wheels = [
 
 [[package]]
 name = "django-periodic-tasks"
-version = "0.1.0b0"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "croniter" },
@@ -285,7 +285,7 @@ provides-extras = ["django-tasks", "rq"]
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", specifier = ">=7.13.3" },
-    { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=5.2.8" },
+    { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=5.2.9" },
     { name = "django-stubs-ext", specifier = ">=5.2.9,<6" },
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
     { name = "mkdocs", specifier = ">=1.6,<2" },
