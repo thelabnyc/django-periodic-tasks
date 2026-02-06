@@ -41,7 +41,7 @@ dev = [
     "tox-uv>=1.29.0",
     "mkdocs>=1.6.1,<2",
     "pymdown-extensions>=10.20,<11",
-    "mkdocs-material>=9.7,<10",
+    "mkdocs-material>=9.7.1,<10",
     "mkdocs-awesome-pages-plugin>=2.10,<3",
     "mkdocs-section-index>=0.3.10,<0.4",
     "mkdocs-pagenav-generator @ git+https://github.com/Andre601/mkdocs-pagenav-generator@acb5b1561695e8f69d67fda029779f40e4b0beef",

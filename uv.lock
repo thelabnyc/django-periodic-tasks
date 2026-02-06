@@ -290,7 +290,7 @@ dev = [
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
     { name = "mkdocs", specifier = ">=1.6.1,<2" },
     { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.10,<3" },
-    { name = "mkdocs-material", specifier = ">=9.7,<10" },
+    { name = "mkdocs-material", specifier = ">=9.7.1,<10" },
     { name = "mkdocs-pagenav-generator", git = "https://github.com/Andre601/mkdocs-pagenav-generator?rev=acb5b1561695e8f69d67fda029779f40e4b0beef" },
     { name = "mkdocs-section-index", specifier = ">=0.3.10,<0.4" },
     { name = "mypy", specifier = ">=1.19.1" },
