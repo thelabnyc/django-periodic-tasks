@@ -46,7 +46,7 @@ dev = [
     "mkdocs-section-index>=0.3.10,<0.4",
     "mkdocs-pagenav-generator @ git+https://github.com/Andre601/mkdocs-pagenav-generator@acb5b1561695e8f69d67fda029779f40e4b0beef",
     "mkautodoc>=0.2.0,<0.3",
-    "django-stubs-ext>=5.2,<6",
+    "django-stubs-ext>=5.2.9,<6",
 ]
 
 [tool.hatch.build.targets.wheel]
