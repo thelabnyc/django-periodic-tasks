@@ -121,6 +121,15 @@ class ScheduledTask(models.Model):
             update_fields=effective_update_fields,
         )
 
+    def enqueue_now(self) -> None:
+        """Enqueue this task immediately, respecting ``@exactly_once`` semantics.
+
+        Delegates to :func:`~django_periodic_tasks.enqueue.enqueue_scheduled_task`.
+        """
+        from django_periodic_tasks.enqueue import enqueue_scheduled_task
+
+        enqueue_scheduled_task(self)
+
 
 class TaskExecution(models.Model):
     """An execution permit for a single scheduled task invocation.

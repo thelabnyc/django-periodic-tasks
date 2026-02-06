@@ -7,7 +7,6 @@ from django.db.models import F
 from django.utils import timezone
 
 from django_periodic_tasks.cron import compute_next_run_at
-from django_periodic_tasks.decorators import is_exactly_once
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.sync import sync_code_schedules
 from django_periodic_tasks.task_resolver import resolve_task
@@ -100,23 +99,7 @@ class PeriodicTaskScheduler(threading.Thread):
                         logger.exception("Failed to advance next_run_at for task id=%s", st.id)
 
     def _process_task(self, st: ScheduledTask) -> None:
-        task_obj = resolve_task(st.task_path)
-        configured = task_obj.using(
-            queue_name=st.queue_name,
-            priority=st.priority,
-            backend=st.backend,
-        )
-
-        if is_exactly_once(task_obj.func):
-            execution = TaskExecution.objects.create(scheduled_task=st)
-            enqueue_kwargs = {**st.kwargs, "_periodic_tasks_execution_id": str(execution.id)}
-
-            def _deferred_enqueue() -> None:
-                configured.enqueue(*st.args, **enqueue_kwargs)
-
-            transaction.on_commit(_deferred_enqueue)
-        else:
-            configured.enqueue(*st.args, **st.kwargs)
+        st.enqueue_now()
 
         st.last_run_at = timezone.now()
         st.next_run_at = compute_next_run_at(st.cron_expression, st.timezone)

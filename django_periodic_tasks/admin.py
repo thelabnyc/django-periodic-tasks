@@ -1,7 +1,14 @@
-from django.contrib import admin
+from __future__ import annotations
+
+import logging
+
+from django.contrib import admin, messages
+from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
+
+logger = logging.getLogger(__name__)
 
 # Fields that are always read-only (computed/tracking)
 TRACKING_READONLY = ("source", "last_run_at", "next_run_at", "total_run_count", "created_at", "updated_at")
@@ -42,6 +49,44 @@ class ScheduledTaskAdmin(admin.ModelAdmin[ScheduledTask]):
     list_filter = ("source", "enabled")
     search_fields = ("name", "task_path")
     ordering = ("name",)
+    actions = ["enable_selected", "disable_selected", "run_selected_now"]
+
+    @admin.action(description="Enable selected scheduled tasks")
+    def enable_selected(self, request: HttpRequest, queryset: QuerySet[ScheduledTask]) -> None:
+        count = 0
+        for task in queryset:
+            if not task.enabled:
+                task.enabled = True
+                task.save(update_fields=["enabled"])
+                count += 1
+        messages.success(request, f"Enabled {count} scheduled task(s).")
+
+    @admin.action(description="Disable selected scheduled tasks")
+    def disable_selected(self, request: HttpRequest, queryset: QuerySet[ScheduledTask]) -> None:
+        count = 0
+        for task in queryset:
+            if task.enabled:
+                task.enabled = False
+                task.save(update_fields=["enabled"])
+                count += 1
+        messages.success(request, f"Disabled {count} scheduled task(s).")
+
+    @admin.action(description="Run selected tasks now (ad-hoc enqueue)")
+    def run_selected_now(self, request: HttpRequest, queryset: QuerySet[ScheduledTask]) -> None:
+        enqueued = 0
+        failed: list[str] = []
+        for st in queryset:
+            try:
+                st.enqueue_now()
+            except Exception:
+                logger.exception("Failed to enqueue task: %s (path=%s)", st.name, st.task_path)
+                failed.append(st.name)
+                continue
+            enqueued += 1
+        if enqueued:
+            messages.success(request, f"Enqueued {enqueued} task(s).")
+        if failed:
+            messages.warning(request, f"Failed to enqueue task(s): {', '.join(failed)}")
 
     def get_readonly_fields(
         self,
