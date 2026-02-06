@@ -286,7 +286,7 @@ provides-extras = ["django-tasks", "rq"]
 dev = [
     { name = "coverage", specifier = ">=7.13.3" },
     { name = "django-stubs", extras = ["compatible-mypy"], specifier = ">=5.2.8" },
-    { name = "django-stubs-ext", specifier = ">=5.2,<6" },
+    { name = "django-stubs-ext", specifier = ">=5.2.9,<6" },
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
     { name = "mkdocs", specifier = ">=1.6,<2" },
     { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.10,<3" },
