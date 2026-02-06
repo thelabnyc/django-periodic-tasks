@@ -3,7 +3,7 @@ import uuid
 from django.test import TestCase
 from django.utils import timezone
 
-from django_periodic_tasks.decorators import exactly_once
+from django_periodic_tasks.decorators import exactly_once, is_exactly_once
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 
 
@@ -80,13 +80,13 @@ class TestExactlyOnceDecorator(TestCase):
         self.assertEqual(call_log, [])
 
     def test_exactly_once_marker_attribute(self) -> None:
-        """The decorator should set _exactly_once = True on the wrapper."""
+        """The decorator should register the wrapper in the exactly_once registry."""
 
         @exactly_once
         def my_func() -> None:
             pass
 
-        self.assertTrue(getattr(my_func, "_exactly_once", False))
+        self.assertTrue(is_exactly_once(my_func))
 
     def test_preserves_function_metadata(self) -> None:
         """The decorator should use functools.wraps to preserve __qualname__ etc."""

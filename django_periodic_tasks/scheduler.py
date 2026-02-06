@@ -7,6 +7,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from django_periodic_tasks.cron import compute_next_run_at
+from django_periodic_tasks.decorators import is_exactly_once
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.sync import sync_code_schedules
 from django_periodic_tasks.task_resolver import resolve_task
@@ -106,9 +107,7 @@ class PeriodicTaskScheduler(threading.Thread):
             backend=st.backend,
         )
 
-        is_exactly_once = getattr(task_obj.func, "_exactly_once", False)
-
-        if is_exactly_once:
+        if is_exactly_once(task_obj.func):
             execution = TaskExecution.objects.create(scheduled_task=st)
             enqueue_kwargs = {**st.kwargs, "_periodic_tasks_execution_id": str(execution.id)}
 

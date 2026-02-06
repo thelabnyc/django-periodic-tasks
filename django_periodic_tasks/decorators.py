@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 import functools
 import logging
 
@@ -10,8 +9,15 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+_exactly_once_funcs: set[Callable[..., object]] = set()
 
-def exactly_once(func: Callable[..., Any]) -> Callable[..., Any]:
+
+def is_exactly_once(func: object) -> bool:
+    """Check whether a function was decorated with ``@exactly_once``."""
+    return func in _exactly_once_funcs
+
+
+def exactly_once[R](func: Callable[..., R]) -> Callable[..., R | None]:
     """Decorator ensuring a scheduled task runs at most once per invocation.
 
     When the scheduler creates a ``TaskExecution`` row and passes its ID via
@@ -27,11 +33,13 @@ def exactly_once(func: Callable[..., Any]) -> Callable[..., Any]:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        execution_id: str | None = kwargs.pop("_periodic_tasks_execution_id", None)
+    def wrapper(*args: object, **kwargs: object) -> R | None:
+        raw_execution_id = kwargs.pop("_periodic_tasks_execution_id", None)
 
-        if execution_id is None:
+        if raw_execution_id is None:
             return func(*args, **kwargs)
+
+        execution_id = str(raw_execution_id)
 
         from django_periodic_tasks.models import (
             TaskExecution,  # Avoid AppRegistryNotReady
@@ -55,5 +63,5 @@ def exactly_once(func: Callable[..., Any]) -> Callable[..., Any]:
 
         return result
 
-    wrapper._exactly_once = True  # type: ignore[attr-defined]
+    _exactly_once_funcs.add(wrapper)
     return wrapper

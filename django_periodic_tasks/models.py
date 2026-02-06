@@ -1,9 +1,10 @@
-from typing import Any
+from collections.abc import Iterable
 from zoneinfo import ZoneInfo
 import uuid
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.base import ModelBase
 
 from django_periodic_tasks.cron import compute_next_run_at, validate_cron_expression
 
@@ -87,7 +88,14 @@ class ScheduledTask(models.Model):
         if errors:
             raise ValidationError(errors)
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
+    def save(
+        self,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
         original_next_run_at = self.next_run_at
 
         if not self.enabled:
@@ -95,17 +103,22 @@ class ScheduledTask(models.Model):
         elif self.next_run_at is None:
             self.next_run_at = compute_next_run_at(self.cron_expression, self.timezone)
 
-        raw_update_fields: list[str] | None = kwargs.get("update_fields")
-        if raw_update_fields is not None:
-            fields = set(raw_update_fields)
+        effective_update_fields: list[str] | None = None
+        if update_fields is not None:
+            fields = set(update_fields)
             # Always include updated_at so auto_now fires
             fields.add("updated_at")
             # Include next_run_at if save() modified it
             if self.next_run_at != original_next_run_at:
                 fields.add("next_run_at")
-            kwargs["update_fields"] = list(fields)
+            effective_update_fields = list(fields)
 
-        super().save(*args, **kwargs)
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=effective_update_fields,
+        )
 
 
 class TaskExecution(models.Model):

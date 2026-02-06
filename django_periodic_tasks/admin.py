@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.contrib import admin
 from django.http import HttpRequest
 
@@ -62,7 +60,7 @@ class ScheduledTaskAdmin(admin.ModelAdmin[ScheduledTask]):
     def has_delete_permission(
         self,
         request: HttpRequest,
-        obj: Any = None,
+        obj: ScheduledTask | None = None,
     ) -> bool:
         if obj is not None and obj.source == ScheduledTask.Source.CODE:
             return False
@@ -79,8 +77,8 @@ class TaskExecutionAdmin(admin.ModelAdmin[TaskExecution]):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
-    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: TaskExecution | None = None) -> bool:
         return False
 
-    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: TaskExecution | None = None) -> bool:
         return False

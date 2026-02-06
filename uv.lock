@@ -237,7 +237,7 @@ wheels = [
 
 [[package]]
 name = "django-periodic-tasks"
-version = "0.1.0"
+version = "0.1.0a4"
 source = { editable = "." }
 dependencies = [
     { name = "croniter" },

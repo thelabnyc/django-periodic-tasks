@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Protocol
 
 from django_periodic_tasks.cron import validate_cron_expression
+
+
+class TaskLike(Protocol):
+    """Structural type describing the django-tasks ``Task`` interface.
+
+    Used instead of ``Task[..., object]`` because ``Task`` is invariant in its
+    type parameters — a concrete ``Task[[str], None]`` would not satisfy
+    ``Task[..., object]``.  This protocol captures just the attributes the
+    registry needs, so any ``Task[P, T]`` matches regardless of its concrete
+    parameter and return types.
+    """
+
+    @property
+    def module_path(self) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -25,12 +40,12 @@ class ScheduleEntry:
         backend: Task backend name passed to ``task.using()``.
     """
 
-    task: Any
+    task: TaskLike
     cron_expression: str
     name: str
     timezone: str = "UTC"
-    args: list[Any] = field(default_factory=list)
-    kwargs: dict[str, Any] = field(default_factory=dict)
+    args: list[object] = field(default_factory=list)
+    kwargs: dict[str, object] = field(default_factory=dict)
     queue_name: str = "default"
     priority: int = 0
     backend: str = "default"
@@ -44,13 +59,13 @@ class ScheduleRegistry:
 
     def register(
         self,
-        task: Any,
+        task: TaskLike,
         *,
         cron: str,
         name: str,
         timezone: str = "UTC",
-        args: list[Any] | None = None,
-        kwargs: dict[str, Any] | None = None,
+        args: list[object] | None = None,
+        kwargs: dict[str, object] | None = None,
         queue_name: str = "default",
         priority: int = 0,
         backend: str = "default",
@@ -95,13 +110,18 @@ class ScheduleRegistry:
 schedule_registry = ScheduleRegistry()
 
 
-def scheduled_task(
+def scheduled_task[T: TaskLike](
     *,
     cron: str,
     name: str | None = None,
     registry: ScheduleRegistry | None = None,
-    **kwargs: Any,
-) -> Any:
+    timezone: str = "UTC",
+    args: list[object] | None = None,
+    kwargs: dict[str, object] | None = None,
+    queue_name: str = "default",
+    priority: int = 0,
+    backend: str = "default",
+) -> Callable[[T], T]:
     """Decorator that registers a django-tasks ``Task`` with the schedule registry.
 
     Apply this decorator **after** ``@task()`` to register the task for periodic
@@ -117,15 +137,28 @@ def scheduled_task(
         name: Unique schedule name. Defaults to the task's ``module_path``.
         registry: An alternate ``ScheduleRegistry`` instance (defaults to the
             global ``schedule_registry``).
-        **kwargs: Extra options forwarded to
-            :meth:`ScheduleRegistry.register` (``timezone``, ``args``,
-            ``kwargs``, ``queue_name``, ``priority``, ``backend``).
+        timezone: IANA timezone for cron matching (default ``"UTC"``).
+        args: Positional arguments for ``task.enqueue()``.
+        kwargs: Keyword arguments for ``task.enqueue()``.
+        queue_name: Queue name for ``task.using()``.
+        priority: Priority for ``task.using()``.
+        backend: Backend name for ``task.using()``.
     """
     target_registry = registry or schedule_registry
 
-    def decorator(task_obj: Any) -> Any:
+    def decorator(task_obj: T) -> T:
         actual_name = name or task_obj.module_path
-        target_registry.register(task_obj, cron=cron, name=actual_name, **kwargs)
+        target_registry.register(
+            task_obj,
+            cron=cron,
+            name=actual_name,
+            timezone=timezone,
+            args=args,
+            kwargs=kwargs,
+            queue_name=queue_name,
+            priority=priority,
+            backend=backend,
+        )
         return task_obj
 
     return decorator
