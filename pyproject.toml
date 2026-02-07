@@ -33,7 +33,7 @@ rq = [
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
-    "ruff>=0.14.10",
+    "ruff>=0.15.0",
     "coverage>=7.13.3",
     "django-stubs[compatible-mypy]>=5.2.9",
     "psycopg[binary]>=3.0",
