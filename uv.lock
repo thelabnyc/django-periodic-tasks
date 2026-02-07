@@ -297,7 +297,7 @@ dev = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.2" },
     { name = "pymdown-extensions", specifier = ">=10.20.1,<11" },
     { name = "ruff", specifier = ">=0.15.0" },
-    { name = "tox", specifier = ">=4.32.0" },
+    { name = "tox", specifier = ">=4.34.1" },
     { name = "tox-uv", specifier = ">=1.29.0" },
 ]
 
