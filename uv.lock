@@ -294,7 +294,7 @@ dev = [
     { name = "mkdocs-pagenav-generator", git = "https://github.com/Andre601/mkdocs-pagenav-generator?rev=acb5b1561695e8f69d67fda029779f40e4b0beef" },
     { name = "mkdocs-section-index", specifier = ">=0.3.10,<0.4" },
     { name = "mypy", specifier = ">=1.19.1" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.2" },
     { name = "pymdown-extensions", specifier = ">=10.20,<11" },
     { name = "ruff", specifier = ">=0.14.10" },
     { name = "tox", specifier = ">=4.32.0" },
