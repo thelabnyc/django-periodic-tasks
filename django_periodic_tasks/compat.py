@@ -24,16 +24,19 @@ _ThirdPartyTask: type | None = None
 _NativeTask: type | None = None
 
 try:
-    from django_tasks.base import Task as _TP
+    from django_tasks.base import Task as _TP  # 0.9.0+
 
     _ThirdPartyTask = _TP
 except ImportError:
-    pass
+    try:
+        from django_tasks.task import Task as _TP  # type:ignore # 0.7.0-0.8.x
+
+        _ThirdPartyTask = _TP
+    except ImportError:
+        pass
 
 try:
-    from django.tasks.base import (
-        Task as _NT,  # type: ignore[import-untyped,unused-ignore]
-    )
+    from django.tasks.base import Task as _NT
 
     _NativeTask = _NT
 except ImportError:
