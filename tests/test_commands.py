@@ -4,11 +4,12 @@ from unittest.mock import MagicMock, patch
 from django.core.management import call_command, get_commands
 from django.test import TestCase, override_settings
 
+from django_periodic_tasks.compat import DUMMY_BACKEND_PATH
 from django_periodic_tasks.scheduler import PeriodicTaskScheduler
 
 DUMMY_BACKEND_SETTINGS = {
     "default": {
-        "BACKEND": "django_tasks.backends.dummy.DummyBackend",
+        "BACKEND": DUMMY_BACKEND_PATH,
         "ENQUEUE_ON_COMMIT": False,
     }
 }

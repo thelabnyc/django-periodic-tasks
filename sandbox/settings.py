@@ -29,7 +29,12 @@ try:
     import django_tasks  # noqa: F401
 
     INSTALLED_APPS.insert(-2, "django_tasks")
-    INSTALLED_APPS.insert(-2, "django_tasks.backends.database")
+    try:
+        import django_tasks.backends.database  # noqa: F401
+
+        INSTALLED_APPS.insert(-2, "django_tasks.backends.database")
+    except ImportError:
+        pass
 except ImportError:
     pass
 
