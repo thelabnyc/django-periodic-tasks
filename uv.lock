@@ -306,7 +306,7 @@ dev = [
     { name = "pymdown-extensions", specifier = ">=10.21.2,<11" },
     { name = "ruff", specifier = ">=0.15.10" },
     { name = "tox", specifier = ">=4.52.1" },
-    { name = "tox-uv", specifier = ">=1.35.0" },
+    { name = "tox-uv", specifier = ">=1.35.1" },
 ]
 
 [[package]]
