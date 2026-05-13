@@ -333,7 +333,7 @@ provides-extras = ["django-tasks", "rq"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "coverage", specifier = ">=7.13.5" },
+    { name = "coverage", specifier = ">=7.14.0" },
     { name = "django-stubs", specifier = ">=5.2.9" },
     { name = "django-stubs-ext", specifier = ">=5.2.9,<6" },
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
