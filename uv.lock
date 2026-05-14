@@ -342,7 +342,7 @@ dev = [
     { name = "mkdocs-material", specifier = ">=9.7.6,<10" },
     { name = "mkdocs-pagenav-generator", git = "https://github.com/Andre601/mkdocs-pagenav-generator?rev=acb5b1561695e8f69d67fda029779f40e4b0beef" },
     { name = "mkdocs-section-index", specifier = ">=0.3.12,<0.4" },
-    { name = "mypy", specifier = ">=2.0.0" },
+    { name = "mypy", specifier = ">=2.1.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pymdown-extensions", specifier = ">=10.21.2,<11" },
     { name = "ruff", specifier = ">=0.15.12" },
