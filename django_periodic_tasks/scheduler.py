@@ -2,16 +2,20 @@ from datetime import timedelta
 import logging
 import threading
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
 from django_periodic_tasks.cron import compute_next_run_at
+from django_periodic_tasks.enqueue import dispatch_execution
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
 from django_periodic_tasks.sync import sync_code_schedules
 from django_periodic_tasks.task_resolver import resolve_task
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_STALE_EXECUTION_BATCH_SIZE = 100
 
 
 class PeriodicTaskScheduler(threading.Thread):
@@ -113,56 +117,88 @@ class PeriodicTaskScheduler(threading.Thread):
 
         A TaskExecution can become stale if the scheduler committed the row but
         the ``on_commit`` callback that enqueues the task never fired (e.g. the
-        process crashed, the connection was reset, etc.).
+        process crashed, the connection was reset, etc.). Rows with a
+        ``dispatched_at`` are skipped — they're already queued, not lost.
 
         Direct enqueue (not ``on_commit``) is safe here because the
         TaskExecution row was committed in a prior tick's transaction and is
         already visible to workers.
         """
         threshold = timezone.now() - timedelta(seconds=max(60, 2 * self.interval))
+        batch_size: int = getattr(
+            settings,
+            "PERIODIC_TASKS_STALE_EXECUTION_BATCH_SIZE",
+            _DEFAULT_STALE_EXECUTION_BATCH_SIZE,
+        )
+        if batch_size <= 0:
+            raise ValueError(f"PERIODIC_TASKS_STALE_EXECUTION_BATCH_SIZE must be positive, got {batch_size}")
 
-        with transaction.atomic():
-            stale = list(
-                TaskExecution.objects.filter(
-                    status=TaskExecution.Status.PENDING,
-                    created_at__lt=threshold,
-                    scheduled_task__enabled=True,
-                )
-                .select_related("scheduled_task")
-                .select_for_update(skip_locked=True)
+        # Read candidate IDs without locking, then lock + dispatch one row per
+        # transaction. Each lock — and the broker call it guards — is scoped to a
+        # single row, so the transaction never stays open across the whole loop.
+        # Concurrent schedulers then share the backlog via SKIP LOCKED instead of
+        # the first one grabbing every stale row in a single batch. The per-row
+        # re-check (``dispatched_at IS NULL`` after the lock) keeps re-enqueue
+        # exactly-once: a row another scheduler already took is skipped, not
+        # dispatched twice.
+        stale_ids = list(
+            TaskExecution.objects.filter(
+                status=TaskExecution.Status.PENDING,
+                dispatched_at__isnull=True,
+                created_at__lt=threshold,
+                scheduled_task__enabled=True,
             )
+            .order_by("created_at", "id")
+            .values_list("id", flat=True)[:batch_size]
+        )
 
-            for execution in stale:
-                try:
+        for execution_id in stale_ids:
+            try:
+                with transaction.atomic():
+                    execution = (
+                        TaskExecution.objects.filter(
+                            id=execution_id,
+                            status=TaskExecution.Status.PENDING,
+                            dispatched_at__isnull=True,
+                            created_at__lt=threshold,
+                            scheduled_task__enabled=True,
+                        )
+                        .select_related("scheduled_task")
+                        # of=("self",): lock only the execution row, NOT the joined
+                        # ScheduledTask. Siblings share one parent; locking it would
+                        # make a concurrent scheduler SKIP LOCKED past every sibling.
+                        .select_for_update(skip_locked=True, of=("self",))
+                        .first()
+                    )
+                    if execution is None:
+                        # Locked by another scheduler, or no longer stale
+                        # (dispatched/completed) since the unlocked read. Not ours.
+                        continue
                     st = execution.scheduled_task
-                    task_obj = resolve_task(st.task_path)
-                    configured = task_obj.using(
+                    configured = resolve_task(st.task_path).using(
                         queue_name=st.queue_name,
                         priority=st.priority,
                         backend=st.backend,
                     )
-                    enqueue_kwargs = {
-                        **st.kwargs,
-                        "_periodic_tasks_execution_id": str(execution.id),
-                    }
-                    configured.enqueue(*st.args, **enqueue_kwargs)
-                    logger.info(
-                        "Re-enqueued stale execution %s for task %s",
-                        execution.id,
-                        st.name,
-                    )
-                except Exception:
-                    logger.exception(
-                        "Failed to re-enqueue stale execution %s",
-                        execution.id,
-                    )
+                    dispatch_execution(configured, execution)
+                logger.info(
+                    "Re-enqueued stale execution %s for task %s",
+                    execution_id,
+                    st.name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to re-enqueue stale execution %s",
+                    execution_id,
+                )
 
     def _delete_old_executions(self) -> None:
         """Bulk-delete non-PENDING TaskExecution rows older than 24 hours.
 
-        COMPLETED rows have no ongoing purpose once workers have finished
-        processing them.  PENDING rows are preserved because they may still be
-        awaiting delivery or re-enqueue by stale cleanup.
+        Terminal (non-PENDING) rows have no ongoing purpose once workers have
+        finished processing them. PENDING rows are preserved: undispatched stale
+        rows remain eligible for re-enqueue, while dispatched-but-still-PENDING
+        rows are a known out-of-scope failure/observability case.
         """
         threshold = timezone.now() - timedelta(hours=24)
         deleted, _ = (

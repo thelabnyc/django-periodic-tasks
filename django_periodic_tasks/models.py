@@ -154,14 +154,15 @@ class TaskExecution(models.Model):
         default=Status.PENDING,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
             models.Index(
-                fields=["status"],
-                condition=models.Q(status="pending"),
-                name="periodic_pending_exec_idx",
+                fields=["created_at"],
+                condition=models.Q(status="pending", dispatched_at__isnull=True),
+                name="periodic_lost_exec_idx",
             ),
         ]
 

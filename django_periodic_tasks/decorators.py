@@ -28,7 +28,10 @@ def exactly_once[R](func: Callable[..., R]) -> Callable[..., R | None]:
     1. Pop ``_periodic_tasks_execution_id`` from kwargs.
     2. Lock the ``TaskExecution`` row with ``SELECT FOR UPDATE``.
     3. Run the wrapped function only if the row's status is ``PENDING``.
-    4. Mark the row ``COMPLETED`` on success.
+    4. Mark the row ``COMPLETED`` on success. If the body raises, the
+       exception propagates and the row is left ``PENDING``. Once dispatch
+       has been recorded (``dispatched_at`` set), stale cleanup will not
+       re-enqueue that execution.
 
     If ``_periodic_tasks_execution_id`` is absent (e.g. manual invocation), the
     wrapped function runs normally without any execution-permit logic.
