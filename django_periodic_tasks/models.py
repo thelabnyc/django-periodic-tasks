@@ -154,15 +154,19 @@ class TaskExecution(models.Model):
         default=Status.PENDING,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # dispatched_at is a redelivery lease ("last dispatch attempt"), not a permanent
+    # "sent" marker; dispatch_count caps how many times cleanup will re-dispatch.
     dispatched_at = models.DateTimeField(null=True, blank=True)
+    dispatch_count = models.PositiveIntegerField(default=0)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
+            # Partial index on the PENDING working set; lease/attempt bounds are runtime-filtered.
             models.Index(
                 fields=["created_at"],
-                condition=models.Q(status="pending", dispatched_at__isnull=True),
-                name="periodic_lost_exec_idx",
+                condition=models.Q(status="pending"),
+                name="periodic_redispatch_idx",
             ),
         ]
 

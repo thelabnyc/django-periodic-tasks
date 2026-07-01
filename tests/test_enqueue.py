@@ -73,6 +73,7 @@ class TestEnqueueScheduledTask(TestCase):
         self.assertEqual(execution.scheduled_task_id, st.pk)
         self.assertEqual(execution.status, TaskExecution.Status.PENDING)
         self.assertIsNotNone(execution.dispatched_at)
+        self.assertEqual(execution.dispatch_count, 1)
 
         self.assertEqual(len(default_task_backend.results), 1)
         result = default_task_backend.results[0]

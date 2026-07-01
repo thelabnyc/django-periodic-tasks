@@ -29,9 +29,9 @@ def exactly_once[R](func: Callable[..., R]) -> Callable[..., R | None]:
     2. Lock the ``TaskExecution`` row with ``SELECT FOR UPDATE``.
     3. Run the wrapped function only if the row's status is ``PENDING``.
     4. Mark the row ``COMPLETED`` on success. If the body raises, the
-       exception propagates and the row is left ``PENDING``. Once dispatch
-       has been recorded (``dispatched_at`` set), stale cleanup will not
-       re-enqueue that execution.
+       exception propagates and the row is left ``PENDING``. Stale cleanup may
+       re-dispatch a still-PENDING row after its redelivery lease expires, up to
+       ``PERIODIC_TASKS_MAX_DISPATCH_ATTEMPTS`` total dispatch attempts.
 
     If ``_periodic_tasks_execution_id`` is absent (e.g. manual invocation), the
     wrapped function runs normally without any execution-permit logic.

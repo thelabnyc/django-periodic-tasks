@@ -64,13 +64,20 @@ nightly_billing()
 
 ## Stale Execution Recovery
 
-If the scheduler creates a `TaskExecution` row but the `on_commit` callback that enqueues the task never fires (e.g. process crash, connection reset), the row becomes stale.
+Each successful enqueue attempt records `dispatched_at` and increments `dispatch_count` on the `TaskExecution` row. `dispatched_at` is treated as a redelivery lease: it records the latest dispatch attempt, not permanent proof that a worker will run the task.
 
-The scheduler automatically detects stale `PENDING` executions older than `max(60s, 2 × interval)` and re-enqueues them on the next tick. This ensures tasks are not silently lost.
+The scheduler automatically re-dispatches stale `PENDING` executions when either:
+
+- the row has never been dispatched and is older than `PERIODIC_TASKS_REDISPATCH_AFTER`, or
+- the latest dispatch attempt is older than `PERIODIC_TASKS_REDISPATCH_AFTER`.
+
+Re-dispatch is capped by `PERIODIC_TASKS_MAX_DISPATCH_ATTEMPTS` total successful enqueue attempts, including the initial enqueue. This bounds duplicate queue pressure while still recovering cases where a broker accepts a job and then drops it before a worker runs it.
+
+A slow-but-queued task may receive another queued message after the lease expires. `@exactly_once` still prevents duplicate successful execution: once one worker completes the `TaskExecution`, later deliveries for the same execution ID are skipped.
 
 ## Automatic Cleanup
 
-Completed `TaskExecution` rows are automatically deleted after 24 hours. `PENDING` rows are preserved until they are delivered or re-enqueued by the stale execution recovery process.
+Completed `TaskExecution` rows are automatically deleted after 24 hours. `PENDING` rows with dispatch attempts remaining are preserved for stale execution recovery. Exhausted `PENDING` rows are kept for operator inspection and are not re-dispatched again, though a worker delivery already in flight may still mark them completed.
 
 ## When to Use It
 
