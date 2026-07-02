@@ -21,5 +21,5 @@ Where a scheduled task definition comes from.
 
 The lifecycle status of an execution permit.
 
-- `PENDING` — Created by the scheduler, awaiting worker pickup.
+- `PENDING` — Created by the scheduler and not yet completed. The execution may be waiting in the queue, running, failed and eligible for re-dispatch, or exhausted after the maximum dispatch attempts.
 - `COMPLETED` — The `@exactly_once` decorator ran the task successfully.

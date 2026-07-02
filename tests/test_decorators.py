@@ -48,8 +48,8 @@ class TestExactlyOnceDecorator(TestCase):
         self.assertEqual(execution.status, TaskExecution.Status.COMPLETED)
         self.assertIsNotNone(execution.completed_at)
 
-    def test_skips_already_completed_execution(self) -> None:
-        """If execution is already COMPLETED, the function should be skipped."""
+    def test_skips_completed_execution(self) -> None:
+        """A delivery for an already-COMPLETED execution is skipped (at-most-once)."""
         execution = TaskExecution.objects.create(
             scheduled_task=self.scheduled_task,
             status=TaskExecution.Status.COMPLETED,
@@ -65,6 +65,30 @@ class TestExactlyOnceDecorator(TestCase):
         result = my_func(_periodic_tasks_execution_id=str(execution.id))
         self.assertIsNone(result)
         self.assertEqual(call_log, [])
+
+    def test_body_raise_propagates_and_leaves_pending(self) -> None:
+        """If the body raises, the exception propagates, the row stays PENDING,
+        and the body's own DB writes roll back."""
+        execution = TaskExecution.objects.create(
+            scheduled_task=self.scheduled_task,
+        )
+
+        @exactly_once
+        def my_func() -> None:
+            ScheduledTask.objects.create(
+                name="rolled-back-body-write",
+                task_path="sandbox.testapp.tasks.example_task",
+                cron_expression="* * * * *",
+            )
+            raise ValueError("boom")
+
+        with self.assertRaises(ValueError):
+            my_func(_periodic_tasks_execution_id=str(execution.id))
+
+        execution.refresh_from_db()
+        self.assertEqual(execution.status, TaskExecution.Status.PENDING)
+        self.assertIsNone(execution.completed_at)
+        self.assertFalse(ScheduledTask.objects.filter(name="rolled-back-body-write").exists())
 
     def test_skips_nonexistent_execution(self) -> None:
         """If the execution ID doesn't exist, the function should be skipped."""

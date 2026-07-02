@@ -1,10 +1,30 @@
 from datetime import datetime, timedelta, timezone
+import importlib
 
 from django.test import TestCase, override_settings
 
 from django_periodic_tasks.compat import DUMMY_BACKEND_PATH, default_task_backend
-from django_periodic_tasks.enqueue import enqueue_scheduled_task
+from django_periodic_tasks.enqueue import dispatch_execution, enqueue_scheduled_task
 from django_periodic_tasks.models import ScheduledTask, TaskExecution
+
+
+def _invalid_task_errors() -> tuple[type[BaseException], ...]:
+    """InvalidTask* across django-tasks versions and native Django 6, without importing all of them."""
+    candidates = (
+        ("django_tasks.exceptions", "InvalidTaskError"),  # django-tasks <= 0.12
+        ("django_tasks.exceptions", "InvalidTask"),  # django-tasks master
+        ("django.tasks.exceptions", "InvalidTask"),  # Django 6 native
+    )
+    found = []
+    for module_name, attr in candidates:
+        try:
+            found.append(getattr(importlib.import_module(module_name), attr))
+        except (ImportError, AttributeError):
+            continue
+    return tuple(found) or (Exception,)
+
+
+_INVALID_TASK_ERRORS = _invalid_task_errors()
 
 DUMMY_BACKEND_SETTINGS = {
     "default": {
@@ -52,11 +72,46 @@ class TestEnqueueScheduledTask(TestCase):
         assert execution is not None
         self.assertEqual(execution.scheduled_task_id, st.pk)
         self.assertEqual(execution.status, TaskExecution.Status.PENDING)
+        self.assertIsNotNone(execution.dispatched_at)
+        self.assertEqual(execution.dispatch_count, 1)
 
         self.assertEqual(len(default_task_backend.results), 1)
         result = default_task_backend.results[0]
         self.assertIn("_periodic_tasks_execution_id", result.kwargs)
         self.assertEqual(result.kwargs["_periodic_tasks_execution_id"], str(execution.id))
+
+    def test_dispatch_execution_failure_leaves_dispatched_at_null(self) -> None:
+        """If enqueue raises, dispatched_at must stay NULL so stale cleanup can recover the row."""
+        st = self._create_task(
+            name="dispatch-fail",
+            task_path="sandbox.testapp.tasks.exactly_once_task",
+        )
+        execution = TaskExecution.objects.create(scheduled_task=st)
+
+        class BoomTask:
+            def enqueue(self, *args: object, **kwargs: object) -> None:
+                raise RuntimeError("broker down")
+
+        with self.assertRaises(RuntimeError):
+            dispatch_execution(BoomTask(), execution)
+
+        execution.refresh_from_db()
+        self.assertIsNone(execution.dispatched_at)
+
+    def test_exactly_once_invalid_queue_does_not_create_execution(self) -> None:
+        st = self._create_task(
+            name="eo-invalid-queue",
+            task_path="sandbox.testapp.tasks.exactly_once_task",
+            queue_name="missing",
+        )
+
+        # The bad queue is rejected synchronously by task_obj.using(...), before any
+        # TaskExecution row or on_commit callback exists — so no captureOnCommitCallbacks.
+        with self.assertRaises(_INVALID_TASK_ERRORS):
+            enqueue_scheduled_task(st)
+
+        self.assertEqual(TaskExecution.objects.count(), 0)
+        self.assertEqual(len(default_task_backend.results), 0)
 
     def test_unresolvable_task_raises(self) -> None:
         st = self._create_task(

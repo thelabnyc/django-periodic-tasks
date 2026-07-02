@@ -257,6 +257,8 @@ class TestTaskExecution(TestCase):
         self.assertEqual(execution.status, TaskExecution.Status.PENDING)
         self.assertIsNotNone(execution.id)
         self.assertIsNotNone(execution.created_at)
+        self.assertIsNone(execution.dispatched_at)
+        self.assertEqual(execution.dispatch_count, 0)
         self.assertIsNone(execution.completed_at)
 
     def test_uuid_primary_key(self) -> None:

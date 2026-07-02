@@ -374,7 +374,12 @@ class TestSchedulerExactlyOnce(TestCase):
 
 @override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
 class TestStaleCleanupConcurrency(TransactionTestCase):
-    """Verify SELECT FOR UPDATE lock is held for the entire stale cleanup loop."""
+    """Verify per-row SELECT FOR UPDATE SKIP LOCKED keeps re-enqueue exactly-once.
+
+    The lock is now scoped to a single row (not held across the whole loop), but
+    while one scheduler holds a row, a concurrent scheduler must skip it rather
+    than re-enqueue it a second time.
+    """
 
     def setUp(self) -> None:
         default_task_backend.clear()
@@ -398,9 +403,9 @@ class TestStaleCleanupConcurrency(TransactionTestCase):
         self._create_stale_execution(st)
 
         # Track how many times resolve_task is called across threads.
-        # If the row lock is held for the entire cleanup loop, only one
-        # thread will enter the loop and call resolve_task. If the lock is
-        # released early, both threads will resolve and enqueue.
+        # While thread A holds the row lock (inside its per-row transaction),
+        # thread B's SKIP LOCKED re-query returns nothing, so B never resolves
+        # or enqueues. If the row were unlocked early, both would resolve.
         resolve_calls: list[str] = []
         entered = threading.Event()
 
@@ -437,6 +442,62 @@ class TestStaleCleanupConcurrency(TransactionTestCase):
         # With the fix: only thread A calls resolve_task -> 1
         self.assertEqual(len(resolve_calls), 1)
 
+    def test_held_row_does_not_block_sibling_executions(self) -> None:
+        """While one scheduler holds a single stale row, a second scheduler must
+        still re-enqueue the *other* stale executions of the same task.
+
+        Regression guard for ``select_for_update(of=("self",))``: siblings share
+        one parent ScheduledTask, so locking the parent row too would make the
+        second scheduler's SKIP LOCKED skip every sibling (0 drained) instead of
+        the N-1 it doesn't hold.
+        """
+        st = ScheduledTask.objects.create(
+            name="head-of-line-test",
+            task_path="sandbox.testapp.tasks.exactly_once_task",
+            cron_expression="* * * * *",
+            enabled=True,
+            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+        )
+        total = 4
+        for _ in range(total):
+            self._create_stale_execution(st)
+
+        from django_periodic_tasks.task_resolver import resolve_task as original_resolve
+
+        entered = threading.Event()
+        release = threading.Event()
+        parked: list[bool] = []
+
+        def gated_resolve(task_path: str) -> object:
+            # Park only the first call (scheduler X), holding that one row's lock.
+            if not parked:
+                parked.append(True)
+                entered.set()
+                release.wait(timeout=10)
+            return original_resolve(task_path)
+
+        def run_x() -> None:
+            try:
+                PeriodicTaskScheduler(interval=60)._cleanup_stale_executions()
+            finally:
+                connection.close()
+
+        with patch("django_periodic_tasks.scheduler.resolve_task", gated_resolve):
+            thread_x = threading.Thread(target=run_x)
+            thread_x.start()
+            self.assertTrue(entered.wait(timeout=10))  # X now holds one row's lock
+
+            # Scheduler Y runs while X is parked; it must drain the other rows.
+            PeriodicTaskScheduler(interval=60)._cleanup_stale_executions()
+            y_dispatched = TaskExecution.objects.filter(dispatched_at__isnull=False).count()
+
+            release.set()
+            thread_x.join()
+
+        self.assertEqual(y_dispatched, total - 1)  # every sibling except the held one
+        # Once X finishes, all rows are dispatched exactly once.
+        self.assertEqual(TaskExecution.objects.filter(dispatched_at__isnull=True).count(), 0)
+
 
 @override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
 class TestSchedulerStaleCleanup(TestCase):
@@ -457,7 +518,7 @@ class TestSchedulerStaleCleanup(TestCase):
         return ScheduledTask.objects.create(**defaults)
 
     def _create_stale_execution(self, st: ScheduledTask) -> TaskExecution:
-        """Create a TaskExecution and backdate its created_at to make it stale."""
+        """Create a never-dispatched TaskExecution, backdated so its lease has expired."""
         execution = TaskExecution.objects.create(scheduled_task=st)
         # Backdate using .update() to bypass auto_now_add
         stale_time = django_tz.now() - timedelta(minutes=10)
@@ -466,7 +527,7 @@ class TestSchedulerStaleCleanup(TestCase):
         return execution
 
     def test_cleanup_reenqueues_stale_pending(self) -> None:
-        """A stale PENDING execution gets re-enqueued with correct kwargs."""
+        """A stale undispatched PENDING execution gets re-enqueued once with correct kwargs."""
         st = self._create_due_task()
         execution = self._create_stale_execution(st)
 
@@ -477,6 +538,91 @@ class TestSchedulerStaleCleanup(TestCase):
         result = default_task_backend.results[0]
         self.assertIn("_periodic_tasks_execution_id", result.kwargs)
         self.assertEqual(result.kwargs["_periodic_tasks_execution_id"], str(execution.id))
+
+        execution.refresh_from_db()
+        self.assertIsNotNone(execution.dispatched_at)
+
+        scheduler._cleanup_stale_executions()
+        self.assertEqual(len(default_task_backend.results), 1)
+
+    def test_cleanup_skips_recently_dispatched(self) -> None:
+        """A PENDING execution dispatched within the lease window is not re-dispatched."""
+        st = self._create_due_task()
+        execution = TaskExecution.objects.create(scheduled_task=st)
+        # Old row, but dispatched just now -> lease still valid.
+        TaskExecution.objects.filter(id=execution.id).update(
+            created_at=django_tz.now() - timedelta(minutes=10),
+            dispatched_at=django_tz.now(),
+            dispatch_count=1,
+        )
+
+        scheduler = PeriodicTaskScheduler(interval=60)
+        scheduler._cleanup_stale_executions()
+
+        self.assertEqual(len(default_task_backend.results), 0)
+
+    def test_cleanup_redispatches_expired_lease(self) -> None:
+        """A PENDING execution whose dispatch lease has expired IS re-dispatched (bug: dropped by broker)."""
+        st = self._create_due_task()
+        execution = TaskExecution.objects.create(scheduled_task=st)
+        stale_time = django_tz.now() - timedelta(minutes=10)
+        TaskExecution.objects.filter(id=execution.id).update(
+            created_at=stale_time,
+            dispatched_at=stale_time,
+            dispatch_count=1,
+        )
+
+        scheduler = PeriodicTaskScheduler(interval=60)
+        scheduler._cleanup_stale_executions()
+
+        self.assertEqual(len(default_task_backend.results), 1)
+        execution.refresh_from_db()
+        self.assertEqual(execution.dispatch_count, 2)
+        self.assertGreater(execution.dispatched_at, stale_time)
+
+    def test_cleanup_stops_after_max_attempts(self) -> None:
+        """A row that has exhausted PERIODIC_TASKS_MAX_DISPATCH_ATTEMPTS is not re-dispatched."""
+        st = self._create_due_task()
+        execution = TaskExecution.objects.create(scheduled_task=st)
+        stale_time = django_tz.now() - timedelta(minutes=10)
+        # Default max attempts is 3; a lease-expired row already at 3 is exhausted.
+        TaskExecution.objects.filter(id=execution.id).update(
+            created_at=stale_time,
+            dispatched_at=stale_time,
+            dispatch_count=3,
+        )
+
+        scheduler = PeriodicTaskScheduler(interval=60)
+        scheduler._cleanup_stale_executions()
+
+        self.assertEqual(len(default_task_backend.results), 0)
+
+    def test_cleanup_warns_on_final_attempt(self) -> None:
+        """The final re-dispatch logs that no further attempts will be made; earlier ones do not."""
+        st = self._create_due_task()
+        stale_time = django_tz.now() - timedelta(minutes=10)
+        scheduler = PeriodicTaskScheduler(interval=60)
+        logger_name = "django_periodic_tasks.scheduler"
+
+        # A never-dispatched row (attempt 1 of 3) re-dispatches without warning.
+        early = self._create_stale_execution(st)
+        with self.assertNoLogs(logger_name, level="WARNING"):
+            scheduler._cleanup_stale_executions()
+        early.refresh_from_db()
+        self.assertEqual(early.dispatch_count, 1)
+
+        # A row already at max-1 attempts: this re-dispatch is the last, so it warns.
+        final = TaskExecution.objects.create(scheduled_task=st)
+        TaskExecution.objects.filter(id=final.id).update(
+            created_at=stale_time,
+            dispatched_at=stale_time,
+            dispatch_count=2,
+        )
+        with self.assertLogs(logger_name, level="WARNING") as cm:
+            scheduler._cleanup_stale_executions()
+        self.assertTrue(any("final dispatch attempt" in line for line in cm.output))
+        final.refresh_from_db()
+        self.assertEqual(final.dispatch_count, 3)
 
     def test_cleanup_skips_recent_pending(self) -> None:
         """A fresh PENDING execution should not be re-enqueued."""
@@ -546,30 +692,23 @@ class TestSchedulerStaleCleanup(TestCase):
         self.assertEqual(result.task.queue_name, "special")
         self.assertEqual(result.task.priority, 10)
 
-    def test_cleanup_default_threshold(self) -> None:
-        """Threshold should be max(60, 2*interval) seconds."""
-        # With interval=15, threshold should be 60 seconds
-        st = self._create_due_task(name="threshold-60")
+    @override_settings(PERIODIC_TASKS_REDISPATCH_AFTER=300)
+    def test_cleanup_respects_redispatch_after(self) -> None:
+        """The lease is PERIODIC_TASKS_REDISPATCH_AFTER, independent of the tick interval."""
+        st = self._create_due_task(name="redispatch-after")
         execution = TaskExecution.objects.create(scheduled_task=st)
-        # Backdate to 59 seconds ago — should NOT be stale with threshold=60
-        almost_stale = django_tz.now() - timedelta(seconds=59)
-        TaskExecution.objects.filter(id=execution.id).update(created_at=almost_stale)
 
+        # 299s old, lease window 300s -> not yet eligible.
+        TaskExecution.objects.filter(id=execution.id).update(created_at=django_tz.now() - timedelta(seconds=299))
         scheduler = PeriodicTaskScheduler(interval=15)
         scheduler._cleanup_stale_executions()
         self.assertEqual(len(default_task_backend.results), 0)
 
-        # With interval=60, threshold should be 120 seconds
+        # Older than the window -> eligible.
         default_task_backend.clear()
-        st2 = self._create_due_task(name="threshold-120")
-        execution2 = TaskExecution.objects.create(scheduled_task=st2)
-        # Backdate to 90 seconds ago — stale for interval=15 but not for interval=60
-        medium_age = django_tz.now() - timedelta(seconds=90)
-        TaskExecution.objects.filter(id=execution2.id).update(created_at=medium_age)
-
-        scheduler_60 = PeriodicTaskScheduler(interval=60)
-        scheduler_60._cleanup_stale_executions()
-        self.assertEqual(len(default_task_backend.results), 0)
+        TaskExecution.objects.filter(id=execution.id).update(created_at=django_tz.now() - timedelta(seconds=301))
+        scheduler._cleanup_stale_executions()
+        self.assertEqual(len(default_task_backend.results), 1)
 
     def test_cleanup_and_delete_failures_do_not_block_tick(self) -> None:
         """Exceptions in _cleanup_stale_executions or _delete_old_executions don't block tick."""
@@ -650,9 +789,24 @@ class TestSchedulerDeleteOldExecutions(TestCase):
         self.assertEqual(TaskExecution.objects.count(), 0)
 
     def test_delete_preserves_pending(self) -> None:
-        """PENDING execution older than 24h is NOT deleted."""
+        """PENDING execution older than 24h with attempts remaining is NOT deleted."""
         st = self._create_task()
         self._create_old_execution(st, TaskExecution.Status.PENDING)
+
+        scheduler = PeriodicTaskScheduler(interval=60)
+        scheduler._delete_old_executions()
+
+        self.assertEqual(TaskExecution.objects.count(), 1)
+
+    def test_delete_preserves_exhausted_pending(self) -> None:
+        """PENDING execution with exhausted attempts is NOT deleted."""
+        st = self._create_task()
+        execution = self._create_old_execution(st, TaskExecution.Status.PENDING)
+        old_time = django_tz.now() - timedelta(hours=25)
+        TaskExecution.objects.filter(id=execution.id).update(
+            dispatch_count=3,  # default max
+            dispatched_at=old_time,
+        )
 
         scheduler = PeriodicTaskScheduler(interval=60)
         scheduler._delete_old_executions()

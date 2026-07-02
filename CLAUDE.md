@@ -40,6 +40,8 @@ docker compose run --rm test uv run python sandbox/manage.py test --noinput -v 2
 | `PERIODIC_TASKS_AUTOSTART` | `bool` | `False` | Start scheduler daemon thread on `AppConfig.ready()` |
 | `PERIODIC_TASKS_SCHEDULER_INTERVAL` | `int` | `15` | Seconds between scheduler ticks |
 | `PERIODIC_TASKS_SCHEDULER_CLASS` | `str` | `"django_periodic_tasks.scheduler.PeriodicTaskScheduler"` | Dotted path to the scheduler class. Subclass `PeriodicTaskScheduler` to customize behavior. |
+| `PERIODIC_TASKS_REDISPATCH_AFTER` | `int` | `300` | Seconds since the last dispatch attempt before stale cleanup re-dispatches a still-PENDING `@exactly_once` execution (redelivery lease). |
+| `PERIODIC_TASKS_MAX_DISPATCH_ATTEMPTS` | `int` | `3` | Max total dispatch attempts per execution (initial + cleanup re-dispatches) before it's given up on. |
 
 ## Key Conventions
 
