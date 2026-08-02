@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from croniter import CroniterBadCronError, croniter
@@ -26,7 +26,7 @@ def compute_next_run_at(
         raise ValueError(f"Invalid timezone: {timezone_name}") from e
 
     if base_time is None:
-        base_time = datetime.now(tz=timezone.utc)
+        base_time = datetime.now(tz=UTC)
 
     # Convert base_time to the target timezone for correct cron matching
     base_in_tz = base_time.astimezone(tz)
@@ -38,4 +38,4 @@ def compute_next_run_at(
 
     next_time: datetime = cron.get_next(datetime)
     # croniter returns tz-aware datetime in the same tz as input
-    return next_time.astimezone(timezone.utc)
+    return next_time.astimezone(UTC)

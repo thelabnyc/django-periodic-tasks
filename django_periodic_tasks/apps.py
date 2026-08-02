@@ -21,7 +21,7 @@ class DjangoPeriodicTasksConfig(AppConfig):
     def ready(self) -> None:
         autodiscover_modules("tasks")
 
-        global _scheduler  # noqa: PLW0603
+        global _scheduler
 
         if not getattr(settings, "PERIODIC_TASKS_AUTOSTART", False):
             return

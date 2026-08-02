@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import ClassVar
 from zoneinfo import ZoneInfo
 import uuid
 
@@ -65,7 +66,7 @@ class ScheduledTask(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [
+        indexes: ClassVar[list[models.Index]] = [
             models.Index(
                 fields=["next_run_at"],
                 condition=models.Q(enabled=True),
@@ -161,7 +162,7 @@ class TaskExecution(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        indexes = [
+        indexes: ClassVar[list[models.Index]] = [
             # Partial index on the PENDING working set; lease/attempt bounds are runtime-filtered.
             models.Index(
                 fields=["created_at"],

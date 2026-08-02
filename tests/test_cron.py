@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from django.test import SimpleTestCase
@@ -40,27 +40,27 @@ class TestValidateCronExpression(SimpleTestCase):
 
 class TestComputeNextRunAt(SimpleTestCase):
     def test_every_minute(self) -> None:
-        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
         result = compute_next_run_at("* * * * *", base_time=base)
-        expected = datetime(2025, 1, 1, 12, 1, 0, tzinfo=timezone.utc)
+        expected = datetime(2025, 1, 1, 12, 1, 0, tzinfo=UTC)
         self.assertEqual(result, expected)
 
     def test_daily_at_5am(self) -> None:
-        base = datetime(2025, 1, 1, 6, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 6, 0, 0, tzinfo=UTC)
         result = compute_next_run_at("0 5 * * *", base_time=base)
-        expected = datetime(2025, 1, 2, 5, 0, 0, tzinfo=timezone.utc)
+        expected = datetime(2025, 1, 2, 5, 0, 0, tzinfo=UTC)
         self.assertEqual(result, expected)
 
     def test_daily_at_5am_before_5am(self) -> None:
-        base = datetime(2025, 1, 1, 4, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 4, 0, 0, tzinfo=UTC)
         result = compute_next_run_at("0 5 * * *", base_time=base)
-        expected = datetime(2025, 1, 1, 5, 0, 0, tzinfo=timezone.utc)
+        expected = datetime(2025, 1, 1, 5, 0, 0, tzinfo=UTC)
         self.assertEqual(result, expected)
 
     def test_every_30_minutes(self) -> None:
-        base = datetime(2025, 1, 1, 12, 10, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 12, 10, 0, tzinfo=UTC)
         result = compute_next_run_at("*/30 * * * *", base_time=base)
-        expected = datetime(2025, 1, 1, 12, 30, 0, tzinfo=timezone.utc)
+        expected = datetime(2025, 1, 1, 12, 30, 0, tzinfo=UTC)
         self.assertEqual(result, expected)
 
     def test_with_timezone(self) -> None:
@@ -71,31 +71,31 @@ class TestComputeNextRunAt(SimpleTestCase):
         self.assertEqual(result, expected)
 
     def test_result_is_utc(self) -> None:
-        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
         result = compute_next_run_at("* * * * *", base_time=base)
-        self.assertEqual(result.tzinfo, timezone.utc)
+        self.assertEqual(result.tzinfo, UTC)
 
     def test_timezone_result_is_utc(self) -> None:
         eastern = ZoneInfo("America/New_York")
         base = datetime(2025, 1, 1, 4, 0, 0, tzinfo=eastern)
         result = compute_next_run_at("0 5 * * *", timezone_name="America/New_York", base_time=base)
-        self.assertEqual(result.tzinfo, timezone.utc)
+        self.assertEqual(result.tzinfo, UTC)
 
     def test_default_base_time_is_now(self) -> None:
         result = compute_next_run_at("* * * * *")
         self.assertIsNotNone(result)
-        self.assertEqual(result.tzinfo, timezone.utc)
+        self.assertEqual(result.tzinfo, UTC)
 
     def test_weekly_sunday(self) -> None:
         # 2025-01-01 is a Wednesday
-        base = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC)
         result = compute_next_run_at("0 0 * * 0", base_time=base)
         # Next Sunday is Jan 5
-        expected = datetime(2025, 1, 5, 0, 0, 0, tzinfo=timezone.utc)
+        expected = datetime(2025, 1, 5, 0, 0, 0, tzinfo=UTC)
         self.assertEqual(result, expected)
 
     def test_invalid_timezone_raises_valueerror(self) -> None:
-        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
         with self.assertRaises(ValueError) as cm:
             compute_next_run_at("* * * * *", timezone_name="Not/A/Timezone", base_time=base)
         self.assertIn("Invalid timezone", str(cm.exception))

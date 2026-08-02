@@ -22,11 +22,11 @@ def backfill_dispatched_at(apps: StateApps, schema_editor: BaseDatabaseSchemaEdi
 
 
 class Migration(migrations.Migration):
-    dependencies = [
+    dependencies = [  # noqa: RUF012
         ("django_periodic_tasks", "0001_initial"),
     ]
 
-    operations = [
+    operations = [  # noqa: RUF012
         migrations.AddField(
             model_name="taskexecution",
             name="dispatched_at",

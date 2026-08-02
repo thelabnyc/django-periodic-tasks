@@ -118,7 +118,6 @@ class TestExactlyOnceDecorator(TestCase):
         @exactly_once
         def my_func() -> None:
             """My docstring."""
-            pass
 
         self.assertEqual(my_func.__name__, "my_func")
         self.assertEqual(my_func.__doc__, "My docstring.")

@@ -15,7 +15,7 @@ def get_all_task_choices() -> list[tuple[str, str]]:
     for module in list(sys.modules.values()):
         try:
             attrs = vars(module)
-        except Exception:
+        except TypeError:
             continue
         for attr_name, obj in attrs.items():
             if attr_name.startswith("_"):

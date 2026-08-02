@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # mypy always sees the third-party django-tasks (dev dependency)
-    from django_tasks import default_task_backend as default_task_backend
-    from django_tasks import task as task
+    from django_tasks import default_task_backend, task
 
 # ---------------------------------------------------------------------------
 # Detect which Task implementations are available

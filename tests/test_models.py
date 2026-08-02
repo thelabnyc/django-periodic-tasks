@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import time
 import uuid
 
@@ -126,7 +126,7 @@ class TestScheduledTaskCreation(TestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
         )
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         task.last_run_at = now
         task.total_run_count = 5
         task.save()

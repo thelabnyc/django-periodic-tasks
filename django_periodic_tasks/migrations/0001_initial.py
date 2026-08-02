@@ -8,9 +8,9 @@ import django_periodic_tasks.task_resolver
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = []
+    dependencies = []  # noqa: RUF012
 
-    operations = [
+    operations = [  # noqa: RUF012
         migrations.CreateModel(
             name="ScheduledTask",
             fields=[

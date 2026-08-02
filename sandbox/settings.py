@@ -26,11 +26,11 @@ INSTALLED_APPS = [
 # Conditionally add django_tasks apps when the third-party package is installed.
 # Django 6.0+ has native django.tasks which doesn't need INSTALLED_APPS entries.
 try:
-    import django_tasks  # noqa: F401
+    import django_tasks
 
     INSTALLED_APPS.insert(-2, "django_tasks")
     try:
-        import django_tasks.backends.database  # noqa: F401
+        import django_tasks.backends.database
 
         INSTALLED_APPS.insert(-2, "django_tasks.backends.database")
     except ImportError:

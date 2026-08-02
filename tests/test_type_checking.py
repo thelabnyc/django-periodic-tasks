@@ -21,6 +21,7 @@ class TestTypeAnnotations(SimpleTestCase):
             [sys.executable, "-m", "mypy", "sandbox/type_checking.py"],
             capture_output=True,
             text=True,
+            check=False,
         )
         self.assertEqual(
             result.returncode,
