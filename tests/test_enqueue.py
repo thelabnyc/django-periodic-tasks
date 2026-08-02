@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 import importlib
 
 from django.test import TestCase, override_settings
@@ -46,7 +46,7 @@ class TestEnqueueScheduledTask(TestCase):
             "task_path": "sandbox.testapp.tasks.example_task",
             "cron_expression": "* * * * *",
             "enabled": True,
-            "next_run_at": datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            "next_run_at": datetime.now(tz=UTC) + timedelta(hours=1),
         }
         defaults.update(kwargs)
         return ScheduledTask.objects.create(**defaults)

@@ -17,7 +17,7 @@ USE_TZ = True
 if not apps.ready and not settings.configured:
     django.setup()
 
-import django_stubs_ext  # noqa: E402
+import django_stubs_ext
 
 django_stubs_ext.monkeypatch()
 

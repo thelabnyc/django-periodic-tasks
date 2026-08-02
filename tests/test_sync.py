@@ -177,9 +177,8 @@ class TestSyncCodeSchedules(TestCase):
                 raise RuntimeError("Simulated failure")
             return real_update_or_create(self_qs, **kwargs)
 
-        with patch.object(type(ScheduledTask.objects), "update_or_create", failing_update_or_create):
-            with self.assertRaises(RuntimeError):
-                sync_code_schedules(self.registry)
+        with patch.object(type(ScheduledTask.objects), "update_or_create", failing_update_or_create), self.assertRaises(RuntimeError):
+            sync_code_schedules(self.registry)
 
         # Because of the transaction, neither task should be in the DB
         self.assertEqual(ScheduledTask.objects.count(), 0)

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 import threading
 import time
@@ -31,7 +31,7 @@ class TestSchedulerTick(TestCase):
             "task_path": "sandbox.testapp.tasks.example_task",
             "cron_expression": "* * * * *",
             "enabled": True,
-            "next_run_at": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "next_run_at": datetime.now(tz=UTC) - timedelta(minutes=1),
         }
         defaults.update(kwargs)  # type: ignore[arg-type]
         return ScheduledTask.objects.create(**defaults)
@@ -42,7 +42,7 @@ class TestSchedulerTick(TestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            next_run_at=datetime.now(tz=UTC) + timedelta(hours=1),
         )
 
     def test_tick_enqueues_due_task(self) -> None:
@@ -65,7 +65,7 @@ class TestSchedulerTick(TestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=False,
-            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1),
         )
         scheduler = PeriodicTaskScheduler(interval=60)
         scheduler.tick()
@@ -83,7 +83,7 @@ class TestSchedulerTick(TestCase):
         self.assertIsNotNone(st.last_run_at)
 
     def test_tick_updates_next_run_at(self) -> None:
-        old_next = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        old_next = datetime.now(tz=UTC) - timedelta(minutes=1)
         st = self._create_due_task(next_run_at=old_next)
 
         scheduler = PeriodicTaskScheduler(interval=60)
@@ -150,7 +150,7 @@ class TestSchedulerTick(TestCase):
 
     def test_failed_task_advances_next_run_at(self) -> None:
         """Bug 3: A failed task should advance next_run_at to the next cron time."""
-        old_next = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        old_next = datetime.now(tz=UTC) - timedelta(minutes=1)
         st = self._create_due_task(
             name="fail-advance",
             task_path="nonexistent.module.task",
@@ -263,7 +263,7 @@ class TestSchedulerConcurrency(TransactionTestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1),
         )
 
         entered = threading.Event()
@@ -311,7 +311,7 @@ class TestSchedulerExactlyOnce(TestCase):
             "task_path": "sandbox.testapp.tasks.exactly_once_task",
             "cron_expression": "* * * * *",
             "enabled": True,
-            "next_run_at": datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            "next_run_at": datetime.now(tz=UTC) - timedelta(minutes=1),
         }
         defaults.update(kwargs)  # type: ignore[arg-type]
         return ScheduledTask.objects.create(**defaults)
@@ -351,7 +351,7 @@ class TestSchedulerExactlyOnce(TestCase):
         st.refresh_from_db()
         self.assertIsNotNone(st.last_run_at)
         self.assertEqual(st.total_run_count, 1)
-        self.assertGreater(st.next_run_at, datetime.now(tz=timezone.utc) - timedelta(minutes=1))
+        self.assertGreater(st.next_run_at, datetime.now(tz=UTC) - timedelta(minutes=1))
 
     def test_non_exactly_once_task_enqueues_immediately(self) -> None:
         """Regular tasks (without @exactly_once) should still enqueue immediately."""
@@ -360,7 +360,7 @@ class TestSchedulerExactlyOnce(TestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1),
         )
 
         scheduler = PeriodicTaskScheduler(interval=60)
@@ -398,7 +398,7 @@ class TestStaleCleanupConcurrency(TransactionTestCase):
             task_path="sandbox.testapp.tasks.exactly_once_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            next_run_at=datetime.now(tz=UTC) + timedelta(hours=1),
         )
         self._create_stale_execution(st)
 
@@ -456,7 +456,7 @@ class TestStaleCleanupConcurrency(TransactionTestCase):
             task_path="sandbox.testapp.tasks.exactly_once_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            next_run_at=datetime.now(tz=UTC) + timedelta(hours=1),
         )
         total = 4
         for _ in range(total):
@@ -512,7 +512,7 @@ class TestSchedulerStaleCleanup(TestCase):
             "task_path": "sandbox.testapp.tasks.exactly_once_task",
             "cron_expression": "* * * * *",
             "enabled": True,
-            "next_run_at": datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            "next_run_at": datetime.now(tz=UTC) + timedelta(hours=1),
         }
         defaults.update(kwargs)  # type: ignore[arg-type]
         return ScheduledTask.objects.create(**defaults)
@@ -717,7 +717,7 @@ class TestSchedulerStaleCleanup(TestCase):
             task_path="sandbox.testapp.tasks.example_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) - timedelta(minutes=1),
+            next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1),
         )
 
         scheduler = PeriodicTaskScheduler(interval=60)
@@ -768,7 +768,7 @@ class TestSchedulerDeleteOldExecutions(TestCase):
             task_path="sandbox.testapp.tasks.exactly_once_task",
             cron_expression="* * * * *",
             enabled=True,
-            next_run_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+            next_run_at=datetime.now(tz=UTC) + timedelta(hours=1),
         )
 
     def _create_old_execution(self, st: ScheduledTask, status: str, hours_ago: float = 25) -> TaskExecution:

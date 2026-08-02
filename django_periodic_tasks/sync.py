@@ -37,7 +37,7 @@ def sync_code_schedules(registry: ScheduleRegistry | None = None) -> None:
                 "enabled": True,
                 "next_run_at": None,
             }
-            obj, created = ScheduledTask.objects.update_or_create(
+            _, created = ScheduledTask.objects.update_or_create(
                 name=name,
                 defaults=defaults,
             )

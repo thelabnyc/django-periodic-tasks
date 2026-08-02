@@ -49,7 +49,7 @@ class ScheduledTaskAdmin(admin.ModelAdmin[ScheduledTask]):
     list_filter = ("source", "enabled")
     search_fields = ("name", "task_path")
     ordering = ("name",)
-    actions = ["enable_selected", "disable_selected", "run_selected_now"]
+    actions = ("enable_selected", "disable_selected", "run_selected_now")
 
     @admin.action(description="Enable selected scheduled tasks")
     def enable_selected(self, request: HttpRequest, queryset: QuerySet[ScheduledTask]) -> None:

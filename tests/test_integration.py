@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from django.test import TestCase, override_settings
 from django.utils import timezone as django_tz
@@ -56,7 +56,7 @@ class TestFullFlow(TestCase):
         self.assertIsNotNone(st.next_run_at)
 
         # 4. Make it due by backdating next_run_at
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         # 5. Run scheduler tick
@@ -71,7 +71,7 @@ class TestFullFlow(TestCase):
         self.assertIsNotNone(st.last_run_at)
         self.assertEqual(st.total_run_count, 1)
         # next_run_at should be in the future
-        self.assertGreater(st.next_run_at, datetime.now(tz=timezone.utc))
+        self.assertGreater(st.next_run_at, datetime.now(tz=UTC))
 
     def test_db_defined_full_flow(self) -> None:
         # 1. Create DB-defined task directly
@@ -83,7 +83,7 @@ class TestFullFlow(TestCase):
         )
 
         # 2. Make it due
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         # 3. Run scheduler tick
@@ -105,7 +105,7 @@ class TestFullFlow(TestCase):
         sync_code_schedules(registry)
 
         st = ScheduledTask.objects.get(name="param-task")
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         scheduler = PeriodicTaskScheduler(interval=60)
@@ -147,7 +147,7 @@ class TestFullFlow(TestCase):
         self.assertFalse(st.enabled)
 
         # Make it due (even though disabled)
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         scheduler = PeriodicTaskScheduler(interval=60)
@@ -183,7 +183,7 @@ class TestExactlyOnceFullFlow(TestCase):
         self.assertIsNotNone(st.next_run_at)
 
         # 4. Make it due
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         # 5. Run scheduler tick (with on_commit capture)
@@ -245,7 +245,7 @@ class TestExactlyOnceFullFlow(TestCase):
 
         # 2. Make it due
         st = ScheduledTask.objects.get(name="eo-stale-redeliver")
-        st.next_run_at = datetime.now(tz=timezone.utc) - timedelta(minutes=1)
+        st.next_run_at = datetime.now(tz=UTC) - timedelta(minutes=1)
         st.save(update_fields=["next_run_at"])
 
         # 3. Tick with on_commit NOT executing — simulates on_commit failure
