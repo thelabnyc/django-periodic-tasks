@@ -378,7 +378,7 @@ dev = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pymdown-extensions", specifier = ">=10.21.3,<11" },
     { name = "ruff", specifier = ">=0.16.3" },
-    { name = "tox", specifier = ">=4.59.0" },
+    { name = "tox", specifier = ">=4.60.0" },
     { name = "tox-uv", specifier = ">=1.36.0" },
 ]
 
