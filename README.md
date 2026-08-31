@@ -25,10 +25,10 @@ INSTALLED_APPS = [
 from django_tasks import task
 from django_periodic_tasks import scheduled_task
 
+
 @scheduled_task(cron="0 5 * * *", name="daily-report")
 @task()
-def daily_report() -> None:
-    ...
+def daily_report() -> None: ...
 ```
 
 ### Run the scheduler

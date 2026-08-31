@@ -14,8 +14,7 @@ from django_periodic_tasks.registry import scheduled_task
 
 @scheduled_task(cron="0 8 * * 1-5")  # Weekdays at 8:00 AM UTC
 @task()
-def morning_report() -> None:
-    ...
+def morning_report() -> None: ...
 ```
 
 !!! note
@@ -45,8 +44,7 @@ Pass arguments that will be forwarded to `task.enqueue()` on each execution:
     kwargs={"full": True},
 )
 @task()
-def weekly_sync(tenant_id: int, full: bool = False) -> None:
-    ...
+def weekly_sync(tenant_id: int, full: bool = False) -> None: ...
 ```
 
 ### Task Options
@@ -61,8 +59,7 @@ Control which queue, priority, and backend the task uses:
     backend="default",
 )
 @task()
-def health_check() -> None:
-    ...
+def health_check() -> None: ...
 ```
 
 ## Cron Expression Syntax
@@ -106,18 +103,17 @@ from django_tasks import task
 from django_periodic_tasks import scheduled_task
 from fluentcron import CronSchedule, daily_at, every_n_minutes
 
+
 # Shortcut function — returns a cron string directly
 @scheduled_task(cron=every_n_minutes(15))  # "*/15 * * * *"
 @task()
-def health_check() -> None:
-    ...
+def health_check() -> None: ...
 
 
 # Shortcut function
 @scheduled_task(cron=daily_at(8))  # "0 8 * * *"
 @task()
-def morning_report() -> None:
-    ...
+def morning_report() -> None: ...
 
 
 # Fluent builder — call str() or .to_str() for the cron string
@@ -125,8 +121,7 @@ def morning_report() -> None:
     cron=str(CronSchedule().weekly().on_monday().at(9, 30)),  # "30 9 * * 1"
 )
 @task()
-def weekly_digest() -> None:
-    ...
+def weekly_digest() -> None: ...
 ```
 
 fluentcron also ships with `CommonSchedules` presets for frequently used expressions:
@@ -134,10 +129,10 @@ fluentcron also ships with `CommonSchedules` presets for frequently used express
 ```python
 from fluentcron import CommonSchedules
 
+
 @scheduled_task(cron=CommonSchedules.EVERY_HOUR)  # "0 * * * *"
 @task()
-def sync_data() -> None:
-    ...
+def sync_data() -> None: ...
 ```
 
 ### Timezone Support
@@ -146,12 +141,11 @@ By default, cron expressions are evaluated in UTC. Specify a timezone to match a
 
 ```python
 @scheduled_task(
-    cron="0 9 * * *",       # 9:00 AM
-    timezone="US/Eastern",   # in Eastern time
+    cron="0 9 * * *",  # 9:00 AM
+    timezone="US/Eastern",  # in Eastern time
 )
 @task()
-def east_coast_morning() -> None:
-    ...
+def east_coast_morning() -> None: ...
 ```
 
 The `timezone` parameter accepts any IANA timezone name (e.g. `"US/Pacific"`, `"Europe/London"`, `"Asia/Tokyo"`).
