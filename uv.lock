@@ -443,7 +443,7 @@ dev = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "pymdown-extensions", specifier = ">=11.0.2,<12" },
     { name = "ruff", specifier = ">=0.17.0" },
-    { name = "tox", specifier = ">=4.65.3" },
+    { name = "tox", specifier = ">=4.65.4" },
     { name = "tox-uv", specifier = ">=1.37.0" },
 ]
 
