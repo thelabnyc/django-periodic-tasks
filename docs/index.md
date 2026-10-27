@@ -35,9 +35,3 @@ python manage.py migrate
 ## Next Steps
 
 {nav}
-
-<style type="text/css">
-.autodoc { display: none; }
-</style>
-
-::: sandbox.settings_docgen.setup

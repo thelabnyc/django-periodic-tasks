@@ -222,3 +222,6 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,linux,macos
+
+# Third-party files for the docs site, copied by bin/vendor-docs-assets.py
+docs/vendor/

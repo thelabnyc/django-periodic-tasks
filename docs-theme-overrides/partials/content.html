@@ -1,0 +1,39 @@
+{#- Based on Zensical 0.0.73's partials/content.html. Stands in for the pagenav-generator MkDocs plugin, which Zensical does not support: "{nav}" in a page lists the pages next to it. -#}
+{%- macro key(item) -%}
+  {%- set first = item.children | first if item.children else none -%}
+  {{- item.url if item.url else (first.url if first and first.is_index) -}}
+{%- endmacro -%}
+{%- macro links(items, skip, in_section) -%}
+  <ul>
+  {%- for item in items if key(item) != skip and not (in_section and item.is_index) -%}
+    <li>
+    {%- if item.children -%}
+      {{ item.title }}{{ links(item.children, skip, true) }}
+    {%- else -%}
+      <a href="{{ item.url | url }}">{{ item.title }}</a>
+    {%- endif -%}
+    </li>
+  {%- endfor -%}
+  </ul>
+{%- endmacro -%}
+{% if "{nav}" in page.content %}
+  {% set parents = page.ancestors | list %}
+  {% if parents and key(parents[0]) == page.url %}
+    {% set current = parents[0] %}
+    {% set parents = parents[1:] %}
+  {% else %}
+    {% set current = page %}
+  {% endif %}
+  {% set content = page.content | replace("{nav}", links(parents[0].children if parents else nav.items, key(current), parents | length > 0)) %}
+{% else %}
+  {% set content = page.content %}
+{% endif %}
+{% include "partials/actions.html" %}
+{% if "<h1" not in content %}
+  <h1>{{ page.title | d(config.site_name, true)}}</h1>
+{% endif %}
+{{ content }}
+{% include "partials/tags.html" %}
+{% include "partials/source-file.html" %}
+{% include "partials/feedback.html" %}
+{% include "partials/comments.html" %}
