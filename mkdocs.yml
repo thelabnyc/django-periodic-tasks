@@ -3,21 +3,29 @@ site_name: django-periodic-tasks
 
 theme:
   name: material
+  variant: classic
+  custom_dir: docs-theme-overrides
+  font: false
   icon:
     repo: fontawesome/brands/git-alt
   features:
+    - navigation.indexes
     - navigation.tabs
     - search.suggest
     - search.highlight
 
 repo_name: django-periodic-tasks
-repo_url: https://gitlab.com/thelabnyc/django-periodic-tasks/
+repo_url: https://gitlab.com/thelabnyc/django-periodic-tasks
 edit_uri: -/edit/master/docs/
 
 docs_dir: docs/
 site_dir: build/mkdocs/
 
 extra_css:
+  - vendor/@fontsource-variable/roboto/index.css
+  - vendor/@fontsource-variable/roboto/wght-italic.css
+  - vendor/@fontsource-variable/roboto-mono/index.css
+  - vendor/@fontsource-variable/roboto-mono/wght-italic.css
   - styles.css
 
 markdown_extensions:
@@ -34,7 +42,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_div_format
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.tasklist:
@@ -44,8 +52,24 @@ markdown_extensions:
 
 use_directory_urls: false
 
+# Rebuilds the API pages when the documented code changes
+watch:
+  - django_periodic_tasks/
+
+extra:
+  # Loads Django before any page imports the code it documents
+  django_setup: !!python/name:sandbox.settings_docgen.setup
+  # GitLab Pages can't send response headers, so this goes in a <meta> tag.
+  content_security_policy: >-
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    connect-src 'self' https://gitlab.com/api/v4/projects/;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self'
+
 plugins:
   - search
-  - awesome-pages
-  - pagenav-generator
-  - section-index
+  - awesome-nav

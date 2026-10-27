@@ -44,6 +44,29 @@ test:
       - IMAGE: "3.14"
         TOX_SKIP_ENV: "^(?!py314-)"
 
+.script_build_docs:
+  - uv run python bin/vendor-docs-assets.py
+  - uv run zensical build --strict
+  - >-
+    uv run python bin/check-docs-csp.py build/mkdocs
+    --unused https://unpkg.com/ace-builds@
+    --unused https://unpkg.com/pyodide@
+    --unused https://cdn.jsdelivr.net/pyodide/
+    --unused https://unpkg.com/resize-observer-polyfill
+    --unused https://unpkg.com/glightbox@
+    --unused https://github.com/
+
+test:docs:
+  stage: test
+  image: "registry.gitlab.com/thelabnyc/python:3.14@sha256:9a9f865840d4ce0ddbc177555d64cadc13b51b3d51908a502a386c24aaef18dc"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    DJANGO_SETTINGS_MODULE: sandbox.settings_docgen
+  script:
+    - uv sync --all-extras
+    - !reference [.script_build_docs]
+
 pages:
   stage: docs
   image: "registry.gitlab.com/thelabnyc/python:3.14@sha256:9a9f865840d4ce0ddbc177555d64cadc13b51b3d51908a502a386c24aaef18dc"
@@ -55,7 +78,7 @@ pages:
     DJANGO_SETTINGS_MODULE: sandbox.settings_docgen
   script:
     - uv sync --all-extras
-    - uv run mkdocs build --strict
+    - !reference [.script_build_docs]
     - rm -rf ./public
     - mv ./build/mkdocs ./public
   artifacts:

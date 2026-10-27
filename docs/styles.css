@@ -11,6 +11,11 @@ div.autodoc-members {
 }
 
 /* Our custom styles */
+:root {
+    --md-text-font: "Roboto Variable";
+    --md-code-font: "Roboto Mono Variable";
+}
+
 .breadcrumbs {
     font-size: 0.7rem;
     line-height: 1.3;

@@ -1,0 +1,6 @@
+nav:
+    - index.md
+    - guides
+    - glob: "*"
+      ignore_no_matches: true
+    - api

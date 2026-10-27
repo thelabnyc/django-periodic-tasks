@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block site_meta %}
+    {{ super() }}
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="{{ config.extra.content_security_policy }}"
+    >
+{% endblock %}
+
+{% block content %}
+    {% if page.content and 'class="mermaid"' in page.content %}
+        {# Inside the content block so instant navigation loads it too. #}
+        <script type="module" src="{{ 'javascripts/mermaid.js' | url }}"></script>
+    {% endif %}
+    {{ super() }}
+{% endblock %}

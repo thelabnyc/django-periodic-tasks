@@ -31,12 +31,21 @@ run = [
 [tasks.docs-serve]
 description = "Serve docs locally with live reload"
 env = { DJANGO_SETTINGS_MODULE = "sandbox.settings_docgen" }
-run = "uv run mkdocs serve --strict"
+depends = ['docs-vendor']
+run = "uv run zensical serve"
+
+[tasks.docs-vendor]
+description = "Copy the docs site's third-party files into docs/vendor/"
+run = "uv run python bin/vendor-docs-assets.py"
 
 [tasks.docs-build]
 description = "Build documentation"
+depends = ['docs-vendor']
 env = { DJANGO_SETTINGS_MODULE = "sandbox.settings_docgen" }
-run = "uv run mkdocs build --strict"
+run = [
+    "uv run zensical build --strict",
+    "uv run python bin/check-docs-csp.py build/mkdocs --unused https://unpkg.com/ace-builds@ --unused https://unpkg.com/pyodide@ --unused https://cdn.jsdelivr.net/pyodide/ --unused https://unpkg.com/resize-observer-polyfill --unused https://unpkg.com/glightbox@ --unused https://github.com/",
+]
 
 [tasks.docs]
 description = "Build documentation for deployment"
