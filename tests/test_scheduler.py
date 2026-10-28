@@ -252,6 +252,45 @@ class TestSchedulerThread(TestCase):
 
 
 @override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
+class TestSchedulerConnectionRecovery(TransactionTestCase):
+    def setUp(self) -> None:
+        default_task_backend.clear()
+
+    @patch("django_periodic_tasks.scheduler.sync_code_schedules")
+    def test_run_recovers_after_connection_is_dropped(self, mock_sync: object) -> None:
+        st = ScheduledTask.objects.create(
+            name="reconnect-test",
+            task_path="sandbox.testapp.tasks.example_task",
+            cron_expression="* * * * *",
+            enabled=True,
+            next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1),
+        )
+        scheduler = PeriodicTaskScheduler(interval=1)
+        waits = 0
+
+        def between_ticks(timeout: float | None = None) -> bool:
+            nonlocal waits
+            waits += 1
+            if waits == 1:
+                ScheduledTask.objects.filter(pk=st.pk).update(next_run_at=datetime.now(tz=UTC) - timedelta(minutes=1))
+                connection.ensure_connection()
+                assert connection.connection is not None
+                connection.connection.close()
+            elif waits == 3:
+                scheduler._stop_event.set()
+            return True
+
+        scheduler._stop_event.wait = between_ticks  # type: ignore[method-assign]
+        with patch.dict(connection.settings_dict, {"CONN_MAX_AGE": None}):
+            connection.close()
+            scheduler.run()
+            connection.close()
+
+        st.refresh_from_db()
+        self.assertEqual(st.total_run_count, 2)
+
+
+@override_settings(TASKS=DUMMY_BACKEND_SETTINGS)
 class TestSchedulerConcurrency(TransactionTestCase):
     def setUp(self) -> None:
         default_task_backend.clear()
