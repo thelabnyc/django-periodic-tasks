@@ -3,7 +3,7 @@ import logging
 import threading
 
 from django.conf import settings
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
@@ -58,10 +58,15 @@ class PeriodicTaskScheduler(threading.Thread):
         except Exception:
             logger.exception("Failed to sync code schedules on startup")
         while not self._stop_event.is_set():
+            # Long-lived threads must drop broken or expired connections
+            # themselves; Django only does this around web requests.
+            close_old_connections()
             try:
                 self.tick()
             except Exception:
                 logger.exception("Scheduler tick failed")
+            finally:
+                close_old_connections()
             self._stop_event.wait(self.interval)
         logger.info("Periodic task scheduler stopped")
 
