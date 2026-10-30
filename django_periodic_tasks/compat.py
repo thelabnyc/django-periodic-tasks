@@ -26,7 +26,7 @@ try:
     _ThirdPartyTask = _TP
 except ImportError:
     try:
-        from django_tasks.task import Task as _TP  # type:ignore # 0.7.0-0.8.x
+        from django_tasks.task import Task as _TP  # type: ignore[no-redef,unused-ignore]  # 0.7.0-0.8.x
 
         _ThirdPartyTask = _TP
     except ImportError:

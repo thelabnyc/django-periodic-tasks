@@ -1,9 +1,15 @@
+import importlib.util
 import subprocess
 import sys
+import unittest
 
 from django.test import SimpleTestCase
 
 
+@unittest.skipIf(
+    importlib.util.find_spec("django_tasks") is None,
+    "mypy needs the django-tasks package to check sandbox/type_checking.py",
+)
 class TestTypeAnnotations(SimpleTestCase):
     def test_mypy_type_checking(self) -> None:
         """Verify mypy catches type errors in our decorators and registry.
