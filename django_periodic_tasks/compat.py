@@ -7,8 +7,6 @@ For static analysis (mypy), ``django-tasks`` is always available as a dev
 dependency, so the TYPE_CHECKING block provides authoritative types.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

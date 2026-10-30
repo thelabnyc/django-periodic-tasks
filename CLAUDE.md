@@ -45,7 +45,7 @@ docker compose run --rm test uv run python sandbox/manage.py test --noinput -v 2
 
 ## Key Conventions
 
-- Python 3.13+ required
+- Python 3.14+ required
 - All code must pass mypy strict mode
 - Tests use django-tasks DummyBackend with ENQUEUE_ON_COMMIT=False
 - ScheduledTask.save() auto-computes next_run_at when it's None and task is enabled
