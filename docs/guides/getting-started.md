@@ -4,7 +4,7 @@ This guide walks you through installing django-periodic-tasks, defining your fir
 
 ## Prerequisites
 
-- Python 3.13+
+- Python 3.14+
 - Django 5.2+
 - [django-tasks](https://github.com/RealOrangeOne/django-tasks) installed and configured with at least one backend
 
