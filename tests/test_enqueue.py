@@ -19,7 +19,7 @@ def _invalid_task_errors() -> tuple[type[BaseException], ...]:
     for module_name, attr in candidates:
         try:
             found.append(getattr(importlib.import_module(module_name), attr))
-        except (ImportError, AttributeError):
+        except ImportError, AttributeError:
             continue
     return tuple(found) or (Exception,)
 

@@ -83,7 +83,7 @@ class ScheduledTask(models.Model):
             errors["cron_expression"] = f"Invalid cron expression: {self.cron_expression}"
         try:
             ZoneInfo(self.timezone)
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             errors["timezone"] = f"Invalid timezone: {self.timezone}"
         if "." not in self.task_path:
             errors["task_path"] = "task_path must be a dotted module path (e.g. 'myapp.tasks.my_task')"
