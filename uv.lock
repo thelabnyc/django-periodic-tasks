@@ -277,7 +277,7 @@ dev = [
     { name = "django-stubs-ext", specifier = ">=5.2.9,<7" },
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
     { name = "mypy", specifier = ">=2.4.1" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.7" },
     { name = "pymdown-extensions", specifier = ">=12.3,<13" },
     { name = "ruff", specifier = ">=0.17.3" },
     { name = "tox", specifier = ">=4.67.8" },
