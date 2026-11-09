@@ -5,7 +5,7 @@
   "devDependencies": {
     "@fontsource-variable/roboto": "5.3.0",
     "@fontsource-variable/roboto-mono": "5.3.0",
-    "mermaid": "12.2.0"
+    "mermaid": "12.3.0"
   },
   "docsAssets": {
     "@fontsource-variable/roboto": [
