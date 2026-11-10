@@ -272,7 +272,7 @@ dev = [
     { name = "pymdown-extensions", specifier = ">=12.3,<13" },
     { name = "ruff", specifier = ">=0.17.4" },
     { name = "tox", specifier = ">=4.67.13" },
-    { name = "tox-uv", specifier = ">=1.37.6" },
+    { name = "tox-uv", specifier = ">=1.37.7" },
     { name = "zensical", specifier = ">=0.1.0,<0.1.1" },
 ]
 
