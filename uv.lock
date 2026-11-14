@@ -269,7 +269,7 @@ dev = [
     { name = "mkautodoc", specifier = ">=0.2.0,<0.3" },
     { name = "mypy", specifier = ">=2.4.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.8" },
-    { name = "pymdown-extensions", specifier = ">=13.0,<14" },
+    { name = "pymdown-extensions", specifier = ">=13.1,<14" },
     { name = "ruff", specifier = ">=0.17.4" },
     { name = "tox", specifier = ">=4.67.13" },
     { name = "tox-uv", specifier = ">=1.37.7" },
